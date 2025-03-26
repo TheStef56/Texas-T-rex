@@ -36,12 +36,6 @@
 float SPEED = START_SPEED/(FPS/60.0f);
 float BULLET_SPEED = START_SPEED_B/(FPS/60.0f);
 
-#if defined(__x86_64__) || defined(__amd64__) || defined(__aarch64__)
-    typedef signed long int_ptr_size;
-#elif defined(__i386__) || defined(__arm__)
-    typedef signed int int_ptr_size;
-#endif
-
 #define LOG(...) (SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, __VA_ARGS__))
 
 #define CHECK_ERROR_int(code, state) do {                   \
@@ -54,7 +48,7 @@ float BULLET_SPEED = START_SPEED_B/(FPS/60.0f);
 
 
 #define CHECK_ERROR_ptr(code, state) do {                   \
-    if ((void*)(int_ptr_size)code == NULL) {                \
+    if (code == NULL) {                \
         const char *error = SDL_GetError();                 \
         printf("Line: %d, Error: %s\n", __LINE__, error);   \
         state->CLOSE = true;                                \
@@ -716,14 +710,14 @@ void spawn_bullet(Assets *A, DA* DAE) {
 
 void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
     if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/(int)(ceil(SPEED))) {
-        // spawn_bird(A, DAE);
+        spawn_bird(A, DAE);
         starts->Bird_spawn = SDL_GetTicks();        
     } else if (starts->Bird_spawn > now) {
         starts->Bird_spawn = SDL_GetTicks();         
     }
     
     if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/(int)(ceil(SPEED))) {
-        // spawn_cacti(A, DAE);
+        spawn_cacti(A, DAE);
         starts->Cactus_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
         starts->Cactus_spawn = SDL_GetTicks();
