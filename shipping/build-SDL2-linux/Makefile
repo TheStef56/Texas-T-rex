@@ -10,7 +10,6 @@ all:
 	cd ./SDL2_image/ && make -j16
 	cd ./SDL2_mixer/ && ./configure --with-sdl-prefix="${SDL_PREFIX}"
 	cd ./SDL2_mixer/ && make -j16
-	rm -rf ../lib ../include
 	cp ./SDL2_ttf/.libs/libSDL2_ttf.a ../lib/
 	cp ./SDL2_image/.libs/libSDL2_image.a ../lib/
 	cp ./SDL2_mixer/build/\.libs/libSDL2_mixer.a ../lib/
