@@ -1,0 +1,9 @@
+{
+    "cmake.sourceDirectory": "/home/the/Desktop/programming/trex/dependencies/SDL2",
+    "files.associations": {
+        "array": "c",
+        "string": "c",
+        "string_view": "c",
+        "system_error": "c"
+    }
+}
