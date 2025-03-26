@@ -1,1 +1,4 @@
-trex
+trex*
+.lib
+.dll
+lib/*.a
