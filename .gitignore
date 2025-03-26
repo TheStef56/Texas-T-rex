@@ -2,3 +2,4 @@ trex*
 .lib
 .dll
 lib/*.a
+build

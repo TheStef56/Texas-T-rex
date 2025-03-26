@@ -1,5 +1,0 @@
-make
-cmake
-libtool
-libtool-bin
-autoreconf
