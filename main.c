@@ -881,7 +881,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
     }
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     State GameState = {
         .CLOSE = false,
         .PAUSE = false,
