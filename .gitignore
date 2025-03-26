@@ -1,5 +1,5 @@
 trex*
-.lib
-.dll
+*.lib
+*.dll
 lib/*.a
 build
