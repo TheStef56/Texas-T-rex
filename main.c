@@ -115,15 +115,41 @@ typedef struct {
     size_t count;
 } DArrayOfBullets;
 
+typedef struct{
+    int x;
+    int y;
+    int w;
+    int h;
+} Particle;
+
+typedef struct {
+    Particle **particles;
+    int cx;
+    int cy;
+    size_t count;
+    size_t size;
+} DArrayOfParticles;
+
+typedef struct {
+    DArrayOfParticles **clusters;
+    size_t count;
+    size_t size;
+} DArrayOfParticlesCLusters;
+
+
 typedef enum {
-    ENTITIES,
-    BULLETS
+    DA_TYPE_ENTITIES,
+    DA_TYPE_BULLETS,
+    DA_TYPE_PARTICLES,
+    DA_TYPE_CLUSTERS
 } DAtype;
 
 typedef struct {
     union {
         DArrayOfEntities *DAEe;
-        DArrayOfBullets *DAEb;  
+        DArrayOfBullets *DAEb;
+        DArrayOfParticles *DAEp;
+        DArrayOfParticlesCLusters *DAEpc;
     } ptr;
     DAtype type;
 } DA;
@@ -250,35 +276,68 @@ void destroy_assets(Assets *A) {
     if (A->Backs[2]) SDL_DestroyTexture(A->Backs[2]);
 }
 
-void init_DAE(DA *DAE){
-    if (DAE->type == ENTITIES) {
-        DArrayOfEntities *d = (DArrayOfEntities*)malloc(sizeof(DArrayOfEntities));
-        d->count = 0;
-        d->size = 20;
-        d->data = (Asset**)malloc(sizeof(Asset*)*20);
-        memset(d->data, 0, sizeof(d->data)*20);
-        DAE->ptr.DAEe = d;
-    } else {
-        DArrayOfBullets *d = (DArrayOfBullets*)malloc(sizeof(DArrayOfBullets));
-        d->count = 0;
-        d->size = 20;
-        d->data = (AssetRot**)malloc(sizeof(AssetRot*)*20);
-        memset(d->data, 0, sizeof(d->data)*20);
-        DAE->ptr.DAEb = d;
+void init_DA(DA *DA){
+    if (DA->type == DA_TYPE_ENTITIES) {
+            DArrayOfEntities *d = (DArrayOfEntities*)malloc(sizeof(DArrayOfEntities));
+            d->count = 0;
+            d->size = 20;
+            d->data = (Asset**)malloc(sizeof(Asset*)*20);
+            memset(d->data, 0, sizeof(d->data)*20);
+            DA->ptr.DAEe = d;
+    } else if (DA->type == DA_TYPE_BULLETS) {
+            DArrayOfBullets *d = (DArrayOfBullets*)malloc(sizeof(DArrayOfBullets));
+            d->count = 0;
+            d->size = 20;
+            d->data = (AssetRot**)malloc(sizeof(AssetRot*)*20);
+            memset(d->data, 0, sizeof(d->data)*20);
+            DA->ptr.DAEb = d;
+    } else if (DA->type == DA_TYPE_PARTICLES) {
+            DArrayOfParticles *d = (DArrayOfParticles*)malloc(sizeof(DArrayOfParticles));
+            d->count = 0;
+            d->size = 9;
+            d->particles = (Particle**)malloc(sizeof(Particle*)*9);
+            memset(d->particles, 0, sizeof(d->particles)*9);
+            DA->ptr.DAEp = d;
+    } else if (DA->type == DA_TYPE_CLUSTERS) {
+            DArrayOfParticlesCLusters *d = (DArrayOfParticlesCLusters*)malloc(sizeof(DArrayOfParticlesCLusters));
+            d->count = 0;
+            d->size = 20;
+            d->clusters = (DArrayOfParticles**)malloc(sizeof(DArrayOfParticles*)*20);
+            memset(d->clusters, 0, sizeof(d->clusters)*20);
+            DA->ptr.DAEpc = d;
+
     }
 }
 
-void uninit_DAE(DA *DAE) {
-    if (DAE->type == ENTITIES) {
-        for (size_t x = 0; x < DAE->ptr.DAEe->size; x++) {
-            if (DAE->ptr.DAEe->data[x]) free(DAE->ptr.DAEe->data[x]);
-        }
-        free(DAE->ptr.DAEe);
-    } else {
-        for (size_t x = 0; x < DAE->ptr.DAEb->size; x++) {
-            if (DAE->ptr.DAEb->data[x]) free(DAE->ptr.DAEb->data[x]);
-        }
-        free(DAE->ptr.DAEb);
+void uninit_DA(DA *DA) {
+    switch(DA->type) {
+        case DA_TYPE_ENTITIES:
+            for (size_t x = 0; x < DA->ptr.DAEe->size; x++) {
+                if (DA->ptr.DAEe->data[x]) free(DA->ptr.DAEe->data[x]);
+            }
+            free(DA->ptr.DAEe);
+            break;
+        case DA_TYPE_BULLETS: 
+            for (size_t x = 0; x < DA->ptr.DAEb->size; x++) {
+                if (DA->ptr.DAEb->data[x]) free(DA->ptr.DAEb->data[x]);
+            }
+            free(DA->ptr.DAEb);
+            break;
+        case DA_TYPE_PARTICLES:
+            for (size_t x = 0; x < DA->ptr.DAEp->size; x++) {
+                if (DA->ptr.DAEp->particles[x]) free(DA->ptr.DAEp->particles[x]);
+            }
+            free(DA->ptr.DAEp);
+            break;
+        case DA_TYPE_CLUSTERS:
+            for (size_t x = 0; x < DA->ptr.DAEpc->size; x++) {
+                if (DA->ptr.DAEpc->clusters[x]) free(DA->ptr.DAEpc->clusters[x]);
+            }
+            free(DA->ptr.DAEpc);
+            break;
+        
+        default:
+            break;
     }
 }
 
@@ -337,6 +396,30 @@ void display_bullets(State *state, SDL_Renderer *renderer, DArrayOfBullets *Bull
         if (Bullets->data[x]) {
             AssetRot *current = Bullets->data[x];
             CHECK_ERROR_int(SDL_RenderCopyEx(renderer, current->txt, &current->src, &current->dst, current->angle, &current->rot_c, SDL_FLIP_NONE), state);
+        }
+    }
+}
+
+void display_particles(State *state, SDL_Renderer *renderer, DArrayOfParticlesCLusters *Clusters) {
+    for (size_t x = 0; x < Clusters->size; x++) {
+        DArrayOfParticles *c = Clusters->clusters[x];
+        if (c != NULL) {
+            for (int y = 0; y < c->size; y++) {
+                Particle *p = c->particles[y];
+                if (p != NULL) {
+                    SDL_SetRenderDrawColor(renderer, 0,0,0,255);
+                    SDL_Rect r = {
+                        .x = p->x,
+                        .y = p->y,
+                        .w = p->w,
+                        .h = p->h
+                    };
+                    SDL_RenderDrawRect(renderer, &r);
+                    SDL_RenderFillRect(renderer, &r);
+                    SDL_SetRenderDrawColor(renderer, 255,255,255,255);
+                    LOG("particle %d x: %d, y:%d", y, p->x, p->y);
+                }
+            }
         }
     }
 }
@@ -401,10 +484,11 @@ void display_ammo(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     SDL_DestroyTexture(txt);
 }
 
-void display(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, Assets *A, TTF_Font *font) {
+void display(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, DArrayOfParticlesCLusters *Clusters, Assets *A, TTF_Font *font) {
         display_dino_back_gun_cloud(state, renderer, DAE, A);
         display_entities(state, A, renderer, DAE);
         display_bullets(state, renderer, Bullets);
+        display_particles(state, renderer, Clusters);
         display_points(renderer, state, font);
         display_ammo(renderer, state, font);
 
@@ -610,39 +694,75 @@ void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *
     animate_bullets(Bullets);
 }
 
-void append_entity(DA *DAE, Asset* a, AssetRot* ar) {
-    if (DAE->type == ENTITIES) {
-        if (DAE->ptr.DAEe->count == DAE->ptr.DAEe->size - 1) {
-            DAE->ptr.DAEe->data = (Asset**)realloc(DAE->ptr.DAEe->data, sizeof(Asset*)*DAE->ptr.DAEe->size*2);
-            memset(DAE->ptr.DAEe->data + DAE->ptr.DAEe->size, 0, sizeof(Asset*)*DAE->ptr.DAEe->size);
-            DAE->ptr.DAEe->size *= 2;
-            DAE->ptr.DAEe->data[DAE->ptr.DAEe->count] = a;
-            DAE->ptr.DAEe->count++;
-            return;
-        }
-        for (size_t x=0; x < DAE->ptr.DAEe->size; x++) {
-            if (DAE->ptr.DAEe->data[x] == NULL) {
-                DAE->ptr.DAEe->data[x] = a;
-                DAE->ptr.DAEe->count++;
+void DA_append(DA *DA, void *ent) {
+    switch (DA->type) {
+        case  DA_TYPE_ENTITIES:
+            if (DA->ptr.DAEe->count == DA->ptr.DAEe->size - 1) {
+                DA->ptr.DAEe->data = (Asset**)realloc(DA->ptr.DAEe->data, sizeof(Asset*)*DA->ptr.DAEe->size*2);
+                memset(DA->ptr.DAEe->data + DA->ptr.DAEe->size, 0, sizeof(Asset*)*DA->ptr.DAEe->size);
+                DA->ptr.DAEe->size *= 2;
+                DA->ptr.DAEe->data[DA->ptr.DAEe->count] = (Asset*)ent;
+                DA->ptr.DAEe->count++;
                 return;
             }
-        }
-    } else {
-        if (DAE->ptr.DAEb->count == DAE->ptr.DAEb->size - 1) {
-            DAE->ptr.DAEb->data = (AssetRot**)realloc(DAE->ptr.DAEb->data, sizeof(AssetRot*)*DAE->ptr.DAEb->size*2);
-            memset(DAE->ptr.DAEb->data + DAE->ptr.DAEb->size, 0, sizeof(AssetRot*)*DAE->ptr.DAEb->size);
-            DAE->ptr.DAEb->size *= 2;
-            DAE->ptr.DAEb->data[DAE->ptr.DAEb->count] = ar;
-            DAE->ptr.DAEb->count++;
-            return;
-        }
-        for (size_t x=0; x < DAE->ptr.DAEb->size; x++) {
-            if (DAE->ptr.DAEb->data[x] == NULL) {
-                DAE->ptr.DAEb->data[x] = ar;
-                DAE->ptr.DAEb->count++;
+            for (size_t x=0; x < DA->ptr.DAEe->size; x++) {
+                if (DA->ptr.DAEe->data[x] == NULL) {
+                    DA->ptr.DAEe->data[x] = (Asset*)ent;
+                    DA->ptr.DAEe->count++;
+                    return;
+                }
+            }
+            break;
+        case DA_TYPE_BULLETS:
+            if (DA->ptr.DAEb->count == DA->ptr.DAEb->size - 1) {
+                DA->ptr.DAEb->data = (AssetRot**)realloc(DA->ptr.DAEb->data, sizeof(AssetRot*)*DA->ptr.DAEb->size*2);
+                memset(DA->ptr.DAEb->data + DA->ptr.DAEb->size, 0, sizeof(AssetRot*)*DA->ptr.DAEb->size);
+                DA->ptr.DAEb->size *= 2;
+                DA->ptr.DAEb->data[DA->ptr.DAEb->count] = (AssetRot*)ent;
+                DA->ptr.DAEb->count++;
                 return;
             }
-        }
+            for (size_t x=0; x < DA->ptr.DAEb->size; x++) {
+                if (DA->ptr.DAEb->data[x] == NULL) {
+                    DA->ptr.DAEb->data[x] = (AssetRot*)ent;
+                    DA->ptr.DAEb->count++;
+                    return;
+                }
+            }
+            break;
+        case DA_TYPE_PARTICLES:
+            if (DA->ptr.DAEp->count == DA->ptr.DAEp->size - 1) {
+                DA->ptr.DAEp->particles = (Particle**)realloc(DA->ptr.DAEp->particles, sizeof(Particle*)*DA->ptr.DAEp->size*2);
+                memset(DA->ptr.DAEp->particles + DA->ptr.DAEp->size, 0, sizeof(Particle*)*DA->ptr.DAEp->size);
+                DA->ptr.DAEp->size *= 2;
+                DA->ptr.DAEp->particles[DA->ptr.DAEp->count] = (Particle*)ent;
+                DA->ptr.DAEp->count++;
+                return;
+            }
+            for (size_t x=0; x < DA->ptr.DAEp->size; x++) {
+                if (DA->ptr.DAEp->particles[x] == NULL) {
+                    DA->ptr.DAEp->particles[x] = (Particle*)ent;
+                    DA->ptr.DAEp->count++;
+                    return;
+                }
+            }
+            break;
+        case DA_TYPE_CLUSTERS:
+            if (DA->ptr.DAEpc->count == DA->ptr.DAEpc->size - 1) {
+                DA->ptr.DAEpc->clusters = (DArrayOfParticles**)realloc(DA->ptr.DAEpc->clusters, sizeof(DArrayOfParticles*)*DA->ptr.DAEpc->size*2);
+                memset(DA->ptr.DAEpc->clusters + DA->ptr.DAEpc->size, 0, sizeof(DArrayOfParticles*)*DA->ptr.DAEpc->size);
+                DA->ptr.DAEpc->size *= 2;
+                DA->ptr.DAEpc->clusters[DA->ptr.DAEpc->count] = (DArrayOfParticles*)ent;
+                DA->ptr.DAEpc->count++;
+                return;
+            }
+            for (size_t x=0; x < DA->ptr.DAEpc->size; x++) {
+                if (DA->ptr.DAEpc->clusters[x] == NULL) {
+                    DA->ptr.DAEpc->clusters[x] = (DArrayOfParticles*)ent;
+                    DA->ptr.DAEpc->count++;
+                    return;
+                }
+            }
     }
     
 }
@@ -657,7 +777,7 @@ void spawn_bird(Assets *A, DA *DAE) {
     bird->dst = A->Bird_Down->dst;
     bird->src = A->Bird_Down->src;
     bird->dst.y = rand() % (WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - BIRD_H * 3);
-    append_entity(DAE, bird, NULL);
+    DA_append(DAE, (void*)bird);
 
 }
 
@@ -677,7 +797,7 @@ void spawn_cacti(Assets *A, DA* DAE) {
         cactus->dst = A->Cactus_3->dst;
         cactus->txt = A->Cactus_3->txt;
     }
-    append_entity(DAE, cactus, NULL);
+    DA_append(DAE, (void*)cactus);
 }
 
 void spawn_cloud(Assets *A, DA* DAE) {
@@ -686,7 +806,7 @@ void spawn_cloud(Assets *A, DA* DAE) {
     cloud->src = A->Cloud->src;
     cloud->dst = A->Cloud->dst;
     cloud->dst.y = rand()% (WINDOW_HEIGHT/2);
-    append_entity(DAE, cloud, NULL);
+    DA_append(DAE, (void*)cloud);
 
 }
 
@@ -711,7 +831,7 @@ void spawn_bullet(Assets *A, DA* DAE) {
     a->angle = get_angle2(A->Gun->dst.x + GUN_W/8, A->Gun->dst.y + GUN_H*2/3, mouse_x, mouse_y) + 3;
     a->dst.x = A->Gun->dst.x + A->Gun->dst.w;
     a->dst.y = A->Gun->dst.y;
-    append_entity(DAE, NULL, a);
+    DA_append(DAE, (void*)a);
 }
 
 void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
@@ -737,7 +857,28 @@ void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
     }
 }
 
-void check_bcollisions(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state) {
+void spawn_particles(DA *Clusters, int cx, int cy) {
+    DA particles = {
+        .type=DA_TYPE_PARTICLES
+    };
+    init_DA(&particles);
+
+    for (int x = 0; x < 3; x++) {
+        for (int y=0; y < 3; y++) {
+            Particle *p = (Particle*)malloc(sizeof(Particle));
+            p->x = cx + x*10;
+            p->y = cy + y*10;
+            p->w = 5;
+            p->h = 5;
+            DA_append(&particles, (void*)p);
+        }
+    }
+    particles.ptr.DAEp->cx = cx;
+    particles.ptr.DAEp->cy = cy;
+    DA_append(Clusters, (void*)particles.ptr.DAEp);
+}
+
+void check_bcollisions(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, DA *Clusters, State *state) {
     for (size_t x = 0; x < DAE->size; x++) {
         for (size_t y = 0; y < Bullets->size; y++) {
             if (DAE->data[x] && Bullets->data[y] && DAE->data[x]->txt != A->Cloud->txt) {
@@ -766,6 +907,7 @@ void check_bcollisions(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullet
                          state->POINTS += 10;
                     }
                     
+                    spawn_particles(Clusters, ent->dst.x, ent->dst.y);
                     free(ent);
                     DAE->data[x] = NULL;
                     DAE->count--;
@@ -844,7 +986,22 @@ void increment_speed(size_t lrt) {
     }
 }
 
-void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds, size_t *lrt) {
+// void spawn_particles(SDL_Renderer *renderer) {
+//     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+//     SDL_Rect r = {
+//         .h = 10,
+//         .w = 10,
+//         .x = 100,
+//         .y = 100
+//     };
+//     SDL_RenderDrawRect(renderer, &r);
+//     SDL_RenderFillRect(renderer, &r);
+//     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+
+// }
+
+
+void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds, size_t *lrt) {
     if (state->RESTART) {
         state->RESTART = false;
         state->PAUSE = false;
@@ -854,14 +1011,14 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
         *lrt = SDL_GetTicks();
         destroy_assets(A);
         init_assets(renderer, A);
-        uninit_DAE(DA_e);
-        uninit_DAE(DA_b);
-        init_DAE(DA_e);
-        init_DAE(DA_b);
+        uninit_DA(DA_e);
+        uninit_DA(DA_b);
+        init_DA(DA_e);
+        init_DA(DA_b);
         return;
     }
 
-    display(state, renderer, DA_e->ptr.DAEe, DA_b->ptr.DAEb, A, font);
+    display(state, renderer, DA_e->ptr.DAEe, DA_b->ptr.DAEb, DA_pc->ptr.DAEpc, A, font);
     if (state->START) {
         state->PAUSE = true;
         display_start(renderer, state, font);
@@ -870,7 +1027,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
     if (!state->PAUSE && !state->GAMEOVER) {
         spawn_entities(A, DA_e, starts, SDL_GetTicks());
         animate(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state, starts, SDL_GetTicks(), sounds);
-        check_bcollisions(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state);
+        check_bcollisions(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, DA_pc, state);
         size_t now = SDL_GetTicks();
         if (now - starts->Last_added_bullet >= 3500/SPEED && state->AMMO < 10) {
             state->AMMO++;
@@ -914,10 +1071,14 @@ int main(int argc, char *argv[]) {
 
     Assets GameAssets = {0};
     DA DAE = {
-        .type=ENTITIES
+        .type=DA_TYPE_ENTITIES
     };
     DA Bullets = {
-        .type=BULLETS
+        .type=DA_TYPE_BULLETS
+    };
+
+    DA Clusters = {
+        .type=DA_TYPE_CLUSTERS
     };
 
     Animations_start Starts = {
@@ -940,8 +1101,9 @@ int main(int argc, char *argv[]) {
     CHECK_ERROR_ptr(font, GSptr);
 
     init_assets(renderer, &GameAssets);
-    init_DAE(&DAE);
-    init_DAE(&Bullets);
+    init_DA(&DAE);
+    init_DA(&Bullets);
+    init_DA(&Clusters);
 
     while (!GameState.CLOSE) {
         size_t t1 = SDL_GetTicks();
@@ -950,7 +1112,9 @@ int main(int argc, char *argv[]) {
         SDL_RenderClear(renderer);
 
         manage_events(&GameState, &GameAssets, &Bullets, &GameSounds);
-        handle(&GameState, renderer, &DAE, &Bullets, &Starts, &GameAssets, font, &GameSounds, &last_round_ticks);
+        handle(&GameState, renderer,
+            &DAE, &Bullets, &Clusters,
+            &Starts, &GameAssets, font, &GameSounds, &last_round_ticks);
         
         SDL_RenderPresent(renderer);
         size_t t2 = SDL_GetTicks();
@@ -959,8 +1123,8 @@ int main(int argc, char *argv[]) {
     free_sounds(&GameSounds);    
     TTF_CloseFont(font);
     destroy_assets(&GameAssets);
-    uninit_DAE(&DAE);
-    uninit_DAE(&Bullets);
+    uninit_DA(&DAE);
+    uninit_DA(&Bullets);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     SDL_Quit();
@@ -968,5 +1132,7 @@ int main(int argc, char *argv[]) {
 }
 
 // TODO:
-// - add sound
+// - add sound:
+//      entitieas death sound
+// - add mute option and volume regulation
 // - add enemies death particles
