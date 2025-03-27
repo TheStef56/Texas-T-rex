@@ -57,15 +57,15 @@ float BULLET_SPEED = START_SPEED_B/(FPS/60.0f);
 
 typedef struct {
     SDL_Rect src;  
-    SDL_Rect dst;
+    SDL_FRect dst;
     SDL_Surface *srf;
     SDL_Texture *txt;
 } Asset;
 
 typedef struct {
     SDL_Rect src;  
-    SDL_Rect dst;
-    SDL_Point rot_c;
+    SDL_FRect dst;
+    SDL_FPoint rot_c;
     SDL_Surface *srf;
     SDL_Texture *txt;
     float angle;
@@ -182,20 +182,20 @@ void cap_fps(size_t t1, size_t t2) {
 void init_assets(SDL_Renderer *renderer, Assets* A) {
     A->Back_1 = (Asset*)malloc(sizeof(Asset));
     A->Back_1->src = (SDL_Rect){.x=0, .y=0, .h=60, .w=WINDOW_WIDTH};
-    A->Back_1->dst = (SDL_Rect){.x=0, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
+    A->Back_1->dst = (SDL_FRect){.x=0.f, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
     A->Back_1->srf = IMG_Load("./assets/img/back_1.png");
     A->Back_1->txt = SDL_CreateTextureFromSurface(renderer, A->Back_1->srf);
 
     A->Back_2 = (Asset*)malloc(sizeof(Asset));
     A->Back_2->src = (SDL_Rect){.x=0, .y=0, .h=60, .w=WINDOW_WIDTH};
-    A->Back_2->dst = (SDL_Rect){.x=WINDOW_WIDTH, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
+    A->Back_2->dst = (SDL_FRect){.x=WINDOW_WIDTH, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
     A->Back_2->srf = IMG_Load("./assets/img/back_2.png");
     A->Back_2->txt = SDL_CreateTextureFromSurface(renderer, A->Back_2->srf);
 
 
     A->Back_3 = (Asset*)malloc(sizeof(Asset));
     A->Back_3->src = (SDL_Rect){.x=0, .y=0, .h=60, .w=WINDOW_WIDTH};
-    // A->Back_3->dst = (SDL_Rect){.x=WINDOW_WIDTH, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
+    // A->Back_3->dst = (SDL_FRect){.x=WINDOW_WIDTH, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
     // No need for dst, since it will be used for the texture, not to display it
     A->Back_3->srf = IMG_Load("./assets/img/back_3.png");
     A->Back_3->txt = SDL_CreateTextureFromSurface(renderer, A->Back_3->srf);
@@ -205,7 +205,7 @@ void init_assets(SDL_Renderer *renderer, Assets* A) {
 
     A->Dino = (Asset*)malloc(sizeof(Asset));
     A->Dino->src = (SDL_Rect){.x=0, .y=0, .h=286, .w=232};
-    A->Dino->dst = (SDL_Rect){.x=WINDOW_WIDTH/10, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H*5/6, .h=DINO_H, .w=DINO_W};
+    A->Dino->dst = (SDL_FRect){.x=WINDOW_WIDTH/10, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H*5/6, .h=DINO_H, .w=DINO_W};
     A->Dino->srf = IMG_Load("./assets/img/dino_l.png");
     A->Dinos_srf = IMG_Load("./assets/img/dino_r.png");
     A->Dino->txt = SDL_CreateTextureFromSurface(renderer, A->Dino->srf);
@@ -213,51 +213,51 @@ void init_assets(SDL_Renderer *renderer, Assets* A) {
 
     A->Gun = (Asset*)malloc(sizeof(Asset));
     A->Gun->src = (SDL_Rect){.x=0, .y=0, .h=388, .w=750};
-    A->Gun->dst = (SDL_Rect){.x=WINDOW_WIDTH/10 + DINO_W*35/48, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H*0.4, .h=GUN_H, .w=GUN_W};
+    A->Gun->dst = (SDL_FRect){.x=WINDOW_WIDTH/10 + DINO_W*35/48, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H*0.4, .h=GUN_H, .w=GUN_W};
     A->Gun->srf = IMG_Load("./assets/img/gun.png");
     A->Gun->txt = SDL_CreateTextureFromSurface(renderer, A->Gun->srf);
 
     A->Bird_Down = (Asset*)malloc(sizeof(Asset));
     A->Bird_Down->src = (SDL_Rect){.x=0, .y=0, .h=55, .w=98};
-    A->Bird_Down->dst = (SDL_Rect){.x=WINDOW_WIDTH + 100, .y=WINDOW_HEIGHT/2, .h=BIRD_H, .w=BIRD_W};
+    A->Bird_Down->dst = (SDL_FRect){.x=WINDOW_WIDTH + 100, .y=WINDOW_HEIGHT/2, .h=BIRD_H, .w=BIRD_W};
     A->Bird_Down->srf = IMG_Load("./assets/img/bird_down.png");
     A->Bird_Down->txt = SDL_CreateTextureFromSurface(renderer, A->Bird_Down->srf);
 
     A->Bird_Up = (Asset*)malloc(sizeof(Asset));
     A->Bird_Up->src = (SDL_Rect){.x=0, .y=0, .h=55, .w=98};
-    A->Bird_Up->dst = (SDL_Rect){.x=WINDOW_WIDTH + 100, .y=WINDOW_HEIGHT/2, .h=BIRD_H, .w=BIRD_W};
+    A->Bird_Up->dst = (SDL_FRect){.x=WINDOW_WIDTH + 100, .y=WINDOW_HEIGHT/2, .h=BIRD_H, .w=BIRD_W};
     A->Bird_Up->srf = IMG_Load("./assets/img/bird_up.png");
     A->Bird_Up->txt = SDL_CreateTextureFromSurface(renderer, A->Bird_Up->srf);
 
     A->Cactus_1 = (Asset*)malloc(sizeof(Asset));
     A->Cactus_1->src = (SDL_Rect){.x=0, .y=0, .h=100, .w=51};
-    A->Cactus_1->dst = (SDL_Rect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_1W};
+    A->Cactus_1->dst = (SDL_FRect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_1W};
     A->Cactus_1->srf = IMG_Load("./assets/img/cactus_1.png");
     A->Cactus_1->txt = SDL_CreateTextureFromSurface(renderer, A->Cactus_1->srf);
 
     A->Cactus_2 = (Asset*)malloc(sizeof(Asset));
     A->Cactus_2->src = (SDL_Rect){.x=0, .y=0, .h=100, .w=98};
-    A->Cactus_2->dst = (SDL_Rect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_2W};
+    A->Cactus_2->dst = (SDL_FRect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_2W};
     A->Cactus_2->srf = IMG_Load("./assets/img/cactus_2.png");
     A->Cactus_2->txt = SDL_CreateTextureFromSurface(renderer, A->Cactus_2->srf);
 
     A->Cactus_3 = (Asset*)malloc(sizeof(Asset));
     A->Cactus_3->src = (SDL_Rect){.x=0, .y=0, .h=100, .w=103};
-    A->Cactus_3->dst = (SDL_Rect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_3W};
+    A->Cactus_3->dst = (SDL_FRect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - CACTUS_H*0.5, .h=CACTUS_H, .w=CACTUS_3W};
     A->Cactus_3->srf = IMG_Load("./assets/img/cactus_3.png");
     A->Cactus_3->txt = SDL_CreateTextureFromSurface(renderer, A->Cactus_3->srf);
 
     A->Cloud = (Asset*)malloc(sizeof(Asset));
     A->Cloud->src = (SDL_Rect){.x=0, .y=0, .h=37, .w=83};
-    A->Cloud->dst = (SDL_Rect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT/2, .h=CLOUD_H, .w=CLOUD_W};
+    A->Cloud->dst = (SDL_FRect){.x=WINDOW_WIDTH + 150, .y=WINDOW_HEIGHT/2, .h=CLOUD_H, .w=CLOUD_W};
     A->Cloud->srf = IMG_Load("./assets/img/cloud.png");
     A->Cloud->txt = SDL_CreateTextureFromSurface(renderer, A->Cloud->srf);
 
     A->Bullet = (AssetRot*)malloc(sizeof(AssetRot));
-    A->Bullet->src = (SDL_Rect){.x=0, .y=0, .h=20, .w=48};
-    A->Bullet->dst = (SDL_Rect){.x=0, .y=0, .h=BULLET_H, .w=BULLET_W};
+    A->Bullet->src = (SDL_Rect){.x=0, .y=0, .h=20.f, .w=48};
+    A->Bullet->dst = (SDL_FRect){.x=0.f, .y=0.f, .h=BULLET_H, .w=BULLET_W};
     A->Bullet->angle = 0.0f;
-    A->Bullet->rot_c = (SDL_Point) {.x = 0, .y = 0};
+    A->Bullet->rot_c = (SDL_FPoint) {.x = 0, .y = 0};
     A->Bullet->srf = IMG_Load("./assets/img/bullet.png");
     A->Bullet->txt = SDL_CreateTextureFromSurface(renderer, A->Bullet->srf);
 
@@ -351,7 +351,7 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
     for (size_t x = 0; x < DAE->size; x++) {
         if (DAE->data[x] && DAE->data[x]->txt == A->Cloud->txt) {
             Asset *current = DAE->data[x];
-            CHECK_ERROR_int(SDL_RenderCopy(renderer, current->txt, &current->src, &current->dst), state);
+            CHECK_ERROR_int(SDL_RenderCopyF(renderer, current->txt, &current->src, &current->dst), state);
         }
     }
 
@@ -360,7 +360,7 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
     for (int x=0; x<4; x++) {
         Asset *ptr = arrayOfAssets[x];
         if (ptr && ptr->txt == A->Gun->txt){
-            SDL_Point c = {
+            SDL_FPoint c = {
                 .x = GUN_W/8,
                 .y = GUN_H*2/3
             };
@@ -373,11 +373,11 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
             int gun_rot_cy = A->Gun->dst.y + c.y;
             
             
-            CHECK_ERROR_int(SDL_RenderCopyEx(renderer, ptr->txt, &ptr->src, &ptr->dst, get_angle2(gun_rot_cx, gun_rot_cy, mouse_x, mouse_y), &c, SDL_FLIP_NONE), state);
+            CHECK_ERROR_int(SDL_RenderCopyExF(renderer, ptr->txt, &ptr->src, &ptr->dst, get_angle2(gun_rot_cx, gun_rot_cy, mouse_x, mouse_y), &c, SDL_FLIP_NONE), state);
             continue;
         }
         if (ptr && ptr->txt) {
-            CHECK_ERROR_int(SDL_RenderCopy(renderer, ptr->txt, &ptr->src, &ptr->dst), state);
+            CHECK_ERROR_int(SDL_RenderCopyF(renderer, ptr->txt, &ptr->src, &ptr->dst), state);
         };
     }
 }
@@ -386,7 +386,7 @@ void display_entities(State *state, Assets *A, SDL_Renderer *renderer, DArrayOfE
     for (size_t x = 0; x < DAE->size; x++) {
         if (DAE->data[x] && DAE->data[x]->txt != A->Cloud->txt) {
             Asset *current = DAE->data[x];
-            CHECK_ERROR_int(SDL_RenderCopy(renderer, current->txt, &current->src, &current->dst), state);
+            CHECK_ERROR_int(SDL_RenderCopyF(renderer, current->txt, &current->src, &current->dst), state);
         }
     }
 }
@@ -395,7 +395,7 @@ void display_bullets(State *state, SDL_Renderer *renderer, DArrayOfBullets *Bull
      for (size_t x = 0; x < Bullets->size; x++) {
         if (Bullets->data[x]) {
             AssetRot *current = Bullets->data[x];
-            CHECK_ERROR_int(SDL_RenderCopyEx(renderer, current->txt, &current->src, &current->dst, current->angle, &current->rot_c, SDL_FLIP_NONE), state);
+            CHECK_ERROR_int(SDL_RenderCopyExF(renderer, current->txt, &current->src, &current->dst, current->angle, &current->rot_c, SDL_FLIP_NONE), state);
         }
     }
 }
@@ -404,20 +404,19 @@ void display_particles(State *state, SDL_Renderer *renderer, DArrayOfParticlesCL
     for (size_t x = 0; x < Clusters->size; x++) {
         DArrayOfParticles *c = Clusters->clusters[x];
         if (c != NULL) {
-            for (int y = 0; y < c->size; y++) {
+            for (size_t y = 0; y < c->size; y++) {
                 Particle *p = c->particles[y];
                 if (p != NULL) {
-                    SDL_SetRenderDrawColor(renderer, 0,0,0,255);
+                    CHECK_ERROR_int(SDL_SetRenderDrawColor(renderer, 0,0,0,255), state);
                     SDL_Rect r = {
                         .x = p->x,
                         .y = p->y,
                         .w = p->w,
                         .h = p->h
                     };
-                    SDL_RenderDrawRect(renderer, &r);
-                    SDL_RenderFillRect(renderer, &r);
-                    SDL_SetRenderDrawColor(renderer, 255,255,255,255);
-                    LOG("particle %d x: %d, y:%d", y, p->x, p->y);
+                    CHECK_ERROR_int(SDL_RenderDrawRect(renderer, &r), state);
+                    CHECK_ERROR_int(SDL_RenderFillRect(renderer, &r), state);
+                    CHECK_ERROR_int(SDL_SetRenderDrawColor(renderer, 255,255,255,255), state);
                 }
             }
         }
@@ -441,14 +440,14 @@ void display_points(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = n_numbers * FACTOR*30/100,
         .h =  FACTOR*50/100,
         .x = WINDOW_WIDTH - n_numbers * FACTOR*30/100 - FACTOR*30/100,
         .y = FACTOR*10/100
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     if (state->POINTS != 0) free(points);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
@@ -471,14 +470,14 @@ void display_ammo(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = n_numbers * FACTOR*30/100,
         .h =  FACTOR*50/100,
         .x = WINDOW_WIDTH/20,
         .y = FACTOR*10/100
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     if (state->AMMO != 0) free(ammo);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
@@ -503,14 +502,14 @@ void display_menu(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = 48 * FACTOR*20/100,
         .h =  FACTOR*40*4/100,
         .x = WINDOW_WIDTH/2 - 25 * FACTOR*20/100,
         .y = WINDOW_HEIGHT*3/7
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
 }
@@ -521,14 +520,14 @@ void display_start(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = 21 * FACTOR*50/100,
         .h =  FACTOR,
         .x = WINDOW_WIDTH/2 - 10 * FACTOR*50/100,
         .y = WINDOW_HEIGHT/4
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
 }
@@ -541,14 +540,14 @@ void display_gameover(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = 10 * FACTOR*50/100,
         .h =  FACTOR,
         .x = WINDOW_WIDTH/2 - 5 * FACTOR*50/100,
         .y = WINDOW_HEIGHT/4
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
 
@@ -556,14 +555,14 @@ void display_gameover(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst_s = {
+    SDL_FRect dst_s = {
         .w = 38 * FACTOR*20/100,
         .h =  FACTOR*50/100,
         .x = WINDOW_WIDTH/2 - 19 * FACTOR*20/100,
         .y = WINDOW_HEIGHT*3/7
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst_s), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst_s), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
 
@@ -575,23 +574,23 @@ void display_pause(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
-    SDL_Rect dst = {
+    SDL_FRect dst = {
         .w = 5 * FACTOR*50/100,
         .h = FACTOR,
         .x = WINDOW_WIDTH/2 - 3 * FACTOR*50/100,
         .y = WINDOW_HEIGHT/4
     };
 
-    CHECK_ERROR_int(SDL_RenderCopy(renderer, txt, NULL, &dst), state);
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
 }
 
 void animate_soil(Assets *A)  {
-    int *x1 = &A->Back_1->dst.x;
-    int *x2 = &A->Back_2->dst.x;
-    *x1 -= (int)(ceil(SPEED));
-    *x2 -=(int)(ceil(SPEED));
+    float *x1 = &A->Back_1->dst.x;
+    float *x2 = &A->Back_2->dst.x;
+    *x1 -= SPEED;
+    *x2 -=SPEED;
 
     if (*x1 <= -WINDOW_WIDTH) {
         *x1 = WINDOW_WIDTH;
@@ -605,7 +604,7 @@ void animate_soil(Assets *A)  {
 }
 
 void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sounds) {
-    if (now - starts->Dino_start >= (size_t)1000/(int)(ceil(SPEED))) {
+    if (now - starts->Dino_start >= (size_t)1000/SPEED) {
         starts->Dino_start = SDL_GetTicks();
         SDL_Texture *tmp = A->Dinos_txt;
         A->Dinos_txt = A->Dino->txt;
@@ -638,10 +637,10 @@ void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts
             if (dino_x_dist > 0 && DAE->data[x]->dst.x <= rand()%(WINDOW_WIDTH/2) + WINDOW_WIDTH/2) {
                 float dino_x_norm = (float)dino_x_dist/(dino_x_dist + abs(dino_y_dist));
                 float dino_y_norm = (float)dino_y_dist/(dino_x_dist + abs(dino_y_dist));
-                DAE->data[x]->dst.y -= (int)floor(SPEED*dino_y_norm);
-                DAE->data[x]->dst.x -= (int)floor(SPEED*dino_x_norm);
+                DAE->data[x]->dst.y -= SPEED*dino_y_norm;
+                DAE->data[x]->dst.x -= SPEED*dino_x_norm;
             } else {
-                DAE->data[x]->dst.x -=(int)(ceil(SPEED));
+                DAE->data[x]->dst.x -= SPEED;
             }
 
             if (now - starts->Bird_flap >= 300) {
@@ -658,7 +657,7 @@ void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts
                 Mix_PlayChannel(-1, sounds->death_sound, 0);
                 continue;
             }
-            DAE->data[x]->dst.x -=(int)(ceil(SPEED));
+            DAE->data[x]->dst.x -= SPEED;
         } else if (DAE->data[x] && DAE->data[x]->txt == A->Cloud->txt){
             if (DAE->data[x]->dst.x <= -CLOUD_W){
                 free(DAE->data[x]);
@@ -666,7 +665,7 @@ void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts
                 DAE->count--;
                 continue;
             }
-            DAE->data[x]->dst.x -=(int)(ceil(SPEED));
+            DAE->data[x]->dst.x -= SPEED;
         }
     }
     if (reset_t) starts->Bird_flap = SDL_GetTicks();
@@ -811,7 +810,7 @@ void spawn_cloud(Assets *A, DA* DAE) {
 }
 
 void spawn_bullet(Assets *A, DA* DAE) {
-    SDL_Point rot = {
+    SDL_FPoint rot = {
         .x = -GUN_W*7/8,
         .y = GUN_H*2/3
     };
@@ -835,21 +834,21 @@ void spawn_bullet(Assets *A, DA* DAE) {
 }
 
 void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
-    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/(int)(ceil(SPEED))) {
+    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
         spawn_bird(A, DAE);
         starts->Bird_spawn = SDL_GetTicks();        
     } else if (starts->Bird_spawn > now) {
         starts->Bird_spawn = SDL_GetTicks();         
     }
     
-    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/(int)(ceil(SPEED))) {
+    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
         spawn_cacti(A, DAE);
         starts->Cactus_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
         starts->Cactus_spawn = SDL_GetTicks();
     }
     
-    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/(int)(ceil(SPEED))) {
+    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/SPEED) {
         spawn_cloud(A, DAE);
         starts->Cloud_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
@@ -1031,6 +1030,8 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
 }
 
 int main(int argc, char *argv[]) {
+    (void)argc;
+    (void)argv;
     size_t last_round_ticks = SDL_GetTicks();
     State GameState = {
         .CLOSE = false,
