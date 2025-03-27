@@ -4,12 +4,10 @@ all:
 	cmake -S ./SDL2 -B ./SDL2/build
 	cmake --build ./SDL2/build
 	cmake --install ./SDL2/build --prefix ./SDL2_ttf/external/SDL
-	cd ./SDL2_ttf/external/ && ./download.sh
 	cd ./SDL2_ttf/ && autoreconf -f -i && ./configure --with-sdl-prefix="${SDL_PREFIX}"
 	cd ./SDL2_ttf/ && make -j16
 	cd ./SDL2_image/ && autoreconf -f -i && ./configure --with-sdl-prefix="${SDL_PREFIX}"
 	cd ./SDL2_image/ && make -j16
-	cd ./SDL2_mixer/external/ && ./download.sh
 	cd ./SDL2_mixer/ && ./configure --with-sdl-prefix="${SDL_PREFIX}"
 	cd ./SDL2_mixer/ && make -j16
 	cp ./SDL2_ttf/.libs/libSDL2_ttf.a ../lib/
