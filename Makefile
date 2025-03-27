@@ -9,7 +9,7 @@ endif
 ifeq ($(OS), Windows_NT)
 	CMD = gcc -o trex main.c -g -I./include -L./lib/win32/$(ARCH) \
 	-lmingw32 -lSDL2main -lSDL2 -lSDL2_image -lSDL2_ttf -lSDL2_mixer \
-	-lm -lgdi32 -lwinmm -lrpcrt4 -lsetupapi -lole32 -limm32 -lversion -loleaut32 -mwindows -static
+	-lm -lgdi32 -lwinmm -lrpcrt4 -lsetupapi -lole32 -limm32 -lversion -loleaut32 -static
 else
 	CMD = cp -r SDL2-deps-linux build &&\
 	cd build && make &&\

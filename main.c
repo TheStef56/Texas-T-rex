@@ -140,8 +140,8 @@ typedef struct {
 
 typedef struct{
     Mix_Chunk *shot_sound;
-    Mix_Chunk *stepa_sound;
-    Mix_Chunk *stepb_sound;
+    Mix_Chunk *stepl_sound;
+    Mix_Chunk *stepr_sound;
     Mix_Chunk *death_sound;
 } Sounds;
 
@@ -520,12 +520,16 @@ void animate_soil(Assets *A)  {
     }
 }
 
-void animate_dino(Assets* A, Animations_start *starts, size_t now) {
+void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sounds) {
     if (now - starts->Dino_start >= (size_t)1000/(int)(ceil(SPEED))) {
         starts->Dino_start = SDL_GetTicks();
         SDL_Texture *tmp = A->Dinos_txt;
         A->Dinos_txt = A->Dino->txt;
         A->Dino->txt = tmp;
+        Mix_PlayChannel(-1, sounds->stepl_sound, 0);
+        Mix_Chunk *tmpc = sounds->stepl_sound;
+        sounds->stepl_sound = sounds->stepr_sound;
+        sounds->stepr_sound = tmpc;
     } else if (starts->Dino_start > now){
         starts->Dino_start = SDL_GetTicks();
     }
@@ -601,7 +605,7 @@ void animate_bullets(DArrayOfBullets *DAE) {
 
 void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
     animate_soil(A);
-    animate_dino(A, starts, now);
+    animate_dino(A, starts, now, sounds);
     animate_entities(A, DAE, starts, now, state, sounds);
     animate_bullets(Bullets);
 }
@@ -778,8 +782,8 @@ void check_bcollisions(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullet
 void free_sounds(Sounds *sounds) {
     if (sounds->death_sound) free(sounds->death_sound);
     if (sounds->shot_sound) free(sounds->shot_sound);
-    if (sounds->stepa_sound) free(sounds->stepa_sound);
-    if (sounds->stepb_sound) free(sounds->death_sound);
+    if (sounds->stepl_sound) free(sounds->stepl_sound);
+    if (sounds->stepr_sound) free(sounds->stepr_sound);
 }
 
 void manage_events(State* state, Assets* A, DA *DAE, Sounds *sounds) {
@@ -833,20 +837,21 @@ void manage_events(State* state, Assets* A, DA *DAE, Sounds *sounds) {
     }
 }
 
-void increment_speed(void) {
-    size_t now = SDL_GetTicks();
+void increment_speed(size_t lrt) {
+    size_t now = SDL_GetTicks() - lrt;
     if (now < 90000) {
         SPEED = (START_SPEED + (8.0f*now/90000.0f))/(FPS/60.0f);
     }
 }
 
-void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds) {
+void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds, size_t *lrt) {
     if (state->RESTART) {
         state->RESTART = false;
         state->PAUSE = false;
         state->POINTS = 0;
         state->AMMO = 0;
         SPEED = START_SPEED/(FPS/60.f);
+        *lrt = SDL_GetTicks();
         destroy_assets(A);
         init_assets(renderer, A);
         uninit_DAE(DA_e);
@@ -871,7 +876,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
             state->AMMO++;
             starts->Last_added_bullet = now;
         }
-        increment_speed();
+        increment_speed(*lrt);
     } else if (!state->START && !state->GAMEOVER){
         display_menu(renderer, state, font);
         display_pause(renderer, state, font);
@@ -884,6 +889,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
 }
 
 int main(int argc, char *argv[]) {
+    size_t last_round_ticks = SDL_GetTicks();
     State GameState = {
         .CLOSE = false,
         .PAUSE = false,
@@ -925,7 +931,9 @@ int main(int argc, char *argv[]) {
     
     Sounds GameSounds = {
         .shot_sound = Mix_LoadWAV("./assets/sound/shot.wav"),
-        .death_sound = Mix_LoadWAV("./assets/sound/death.wav")
+        .death_sound = Mix_LoadWAV("./assets/sound/death.wav"),
+        .stepl_sound = Mix_LoadWAV("./assets/sound/stepl.wav"),
+        .stepr_sound = Mix_LoadWAV("./assets/sound/stepr.wav"),
     };
 
     TTF_Font *font = TTF_OpenFont("./assets/font/Muli-Bold.ttf", 120);
@@ -942,7 +950,7 @@ int main(int argc, char *argv[]) {
         SDL_RenderClear(renderer);
 
         manage_events(&GameState, &GameAssets, &Bullets, &GameSounds);
-        handle(&GameState, renderer, &DAE, &Bullets, &Starts, &GameAssets, font, &GameSounds);
+        handle(&GameState, renderer, &DAE, &Bullets, &Starts, &GameAssets, font, &GameSounds, &last_round_ticks);
         
         SDL_RenderPresent(renderer);
         size_t t2 = SDL_GetTicks();
@@ -961,4 +969,4 @@ int main(int argc, char *argv[]) {
 
 // TODO:
 // - add sound
-// - create dependencies script for Windows
+// - add enemies death particles
