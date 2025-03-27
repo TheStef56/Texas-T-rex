@@ -986,21 +986,6 @@ void increment_speed(size_t lrt) {
     }
 }
 
-// void spawn_particles(SDL_Renderer *renderer) {
-//     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-//     SDL_Rect r = {
-//         .h = 10,
-//         .w = 10,
-//         .x = 100,
-//         .y = 100
-//     };
-//     SDL_RenderDrawRect(renderer, &r);
-//     SDL_RenderFillRect(renderer, &r);
-//     SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-
-// }
-
-
 void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds, size_t *lrt) {
     if (state->RESTART) {
         state->RESTART = false;
@@ -1135,4 +1120,8 @@ int main(int argc, char *argv[]) {
 // - add sound:
 //      entitieas death sound
 // - add mute option and volume regulation
-// - add enemies death particles
+// - add enemies death particles:
+//      decide dimensions, randomize quantity    
+//      make animate them with gravity and rolling background velocity
+//      make them bouncy
+//      add inertia
