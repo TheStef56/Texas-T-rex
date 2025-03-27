@@ -56,6 +56,11 @@ float BULLET_SPEED = START_SPEED_B/(FPS/60.0f);
 
 
 typedef struct {
+    float x;
+    float y;
+} Vec2f;
+
+typedef struct {
     SDL_Rect src;  
     SDL_FRect dst;
     SDL_Surface *srf;
@@ -116,10 +121,8 @@ typedef struct {
 } DArrayOfBullets;
 
 typedef struct{
-    int x;
-    int y;
-    int w;
-    int h;
+    SDL_FRect dst;
+    Vec2f vel;
 } Particle;
 
 typedef struct {
@@ -619,71 +622,75 @@ void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sound
     
 }
 
-void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts, size_t now, State *state, Sounds *sounds) {
+void animate_entities(Assets *A, DArrayOfEntities *DAe, Animations_start *starts, size_t now, State *state, Sounds *sounds) {
     bool reset_t = false;
     int dino_x = WINDOW_WIDTH/10 + DINO_W;
     int dino_y = WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H + (DINO_H - DINO_H*200/286);
-    for (size_t x=0; x < DAE->size; x++) {
-        if (DAE->data[x] && (DAE->data[x]->txt == A->Bird_Up->txt || DAE->data[x]->txt == A->Bird_Down->txt)) {
-            if (DAE->data[x]->dst.x <= dino_x){
+    for (size_t x=0; x < DAe->size; x++) {
+        if (DAe->data[x] && (DAe->data[x]->txt == A->Bird_Up->txt || DAe->data[x]->txt == A->Bird_Down->txt)) {
+            if (DAe->data[x]->dst.x <= dino_x){
                 state->GAMEOVER = true;
                 Mix_PlayChannel(-1, sounds->death_sound, 0);
                 continue;
             }
 
-            int dino_x_dist = DAE->data[x]->dst.x - dino_x;
-            int dino_y_dist = DAE->data[x]->dst.y - dino_y;
+            int dino_x_dist = DAe->data[x]->dst.x - dino_x;
+            int dino_y_dist = DAe->data[x]->dst.y - dino_y;
             
-            if (dino_x_dist > 0 && DAE->data[x]->dst.x <= rand()%(WINDOW_WIDTH/2) + WINDOW_WIDTH/2) {
+            if (dino_x_dist > 0 && DAe->data[x]->dst.x <= rand()%(WINDOW_WIDTH/2) + WINDOW_WIDTH/2) {
                 float dino_x_norm = (float)dino_x_dist/(dino_x_dist + abs(dino_y_dist));
                 float dino_y_norm = (float)dino_y_dist/(dino_x_dist + abs(dino_y_dist));
-                DAE->data[x]->dst.y -= SPEED*dino_y_norm;
-                DAE->data[x]->dst.x -= SPEED*dino_x_norm;
+                DAe->data[x]->dst.y -= SPEED*dino_y_norm;
+                DAe->data[x]->dst.x -= SPEED*dino_x_norm;
             } else {
-                DAE->data[x]->dst.x -= SPEED;
+                DAe->data[x]->dst.x -= SPEED;
             }
 
             if (now - starts->Bird_flap >= 300) {
-                if(DAE->data[x]->txt == A->Bird_Down->txt) {
-                    DAE->data[x]->txt = A->Bird_Up->txt;
-                } else if (DAE->data[x]->txt == A->Bird_Up->txt){
-                    DAE->data[x]->txt = A->Bird_Down->txt;
+                if(DAe->data[x]->txt == A->Bird_Down->txt) {
+                    DAe->data[x]->txt = A->Bird_Up->txt;
+                } else if (DAe->data[x]->txt == A->Bird_Up->txt){
+                    DAe->data[x]->txt = A->Bird_Down->txt;
                 }
                 reset_t = true;
             }
-        } else if (DAE->data[x] && (DAE->data[x]->txt == A->Cactus_1->txt || DAE->data[x]->txt == A->Cactus_2->txt || DAE->data[x]->txt == A->Cactus_3->txt) ) {
-            if (DAE->data[x]->dst.x <= dino_x - dino_x/4){
+        } else if (DAe->data[x] && (DAe->data[x]->txt == A->Cactus_1->txt || DAe->data[x]->txt == A->Cactus_2->txt || DAe->data[x]->txt == A->Cactus_3->txt) ) {
+            if (DAe->data[x]->dst.x <= dino_x - dino_x/4){
                 state->GAMEOVER = true;
                 Mix_PlayChannel(-1, sounds->death_sound, 0);
                 continue;
             }
-            DAE->data[x]->dst.x -= SPEED;
-        } else if (DAE->data[x] && DAE->data[x]->txt == A->Cloud->txt){
-            if (DAE->data[x]->dst.x <= -CLOUD_W){
-                free(DAE->data[x]);
-                DAE->data[x] = NULL;
-                DAE->count--;
+            DAe->data[x]->dst.x -= SPEED;
+        } else if (DAe->data[x] && DAe->data[x]->txt == A->Cloud->txt){
+            if (DAe->data[x]->dst.x <= -CLOUD_W){
+                free(DAe->data[x]);
+                DAe->data[x] = NULL;
+                DAe->count--;
                 continue;
             }
-            DAE->data[x]->dst.x -= SPEED;
+            DAe->data[x]->dst.x -= SPEED;
         }
     }
     if (reset_t) starts->Bird_flap = SDL_GetTicks();
 }
 
-void animate_bullets(DArrayOfBullets *DAE) {
-    for (size_t x = 0; x < DAE->size; x++) {
-        if (DAE->data[x]) {
-            if (DAE->data[x]->dst.x >= WINDOW_WIDTH || DAE->data[x]->dst.x <= -BULLET_W || DAE->data[x]->dst.y >= WINDOW_HEIGHT || DAE->data[x]->dst.y <= -BULLET_H) {
-                free(DAE->data[x]);
-                DAE->data[x] = NULL;
-                DAE->count--;
+void animate_bullets(DArrayOfBullets *DAb) {
+    for (size_t x = 0; x < DAb->size; x++) {
+        if (DAb->data[x]) {
+            if (DAb->data[x]->dst.x >= WINDOW_WIDTH || DAb->data[x]->dst.x <= -BULLET_W || DAb->data[x]->dst.y >= WINDOW_HEIGHT || DAb->data[x]->dst.y <= -BULLET_H) {
+                free(DAb->data[x]);
+                DAb->data[x] = NULL;
+                DAb->count--;
                 continue;
             }
-            DAE->data[x]->dst.x += 2*(int)ceil(BULLET_SPEED)*cosf(DAE->data[x]->angle/180*PI);
-            DAE->data[x]->dst.y += 2*(int)ceil(BULLET_SPEED)*sinf(DAE->data[x]->angle/180*PI);
+            DAb->data[x]->dst.x += 2*(int)ceil(BULLET_SPEED)*cosf(DAb->data[x]->angle/180*PI);
+            DAb->data[x]->dst.y += 2*(int)ceil(BULLET_SPEED)*sinf(DAb->data[x]->angle/180*PI);
         }
     }
+}
+
+void animate_particles(DArrayOfParticlesCLusters *Cluster) {
+    
 }
 
 void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
@@ -856,21 +863,20 @@ void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
     }
 }
 
-void spawn_particles(DA *Clusters, int cx, int cy) {
+void spawn_particles(DA *Clusters, float cx, float cy) {
     DA particles = {
         .type=DA_TYPE_PARTICLES
     };
     init_DA(&particles);
 
     for (int x = 0; x < 3; x++) {
-        for (int y=0; y < 3; y++) {
-            Particle *p = (Particle*)malloc(sizeof(Particle));
-            p->x = cx + x*10;
-            p->y = cy + y*10;
-            p->w = 5;
-            p->h = 5;
-            DA_append(&particles, (void*)p);
-        }
+        Particle *p = (Particle*)malloc(sizeof(Particle));
+        p->dst.x = cx;
+        p->dst.y = cy;
+        p->dst.w = 3.0;
+        p->dst.h = 3.0;
+        p->vel = (Vec2f){ .x=0.f, .y=0.f};
+        DA_append(&particles, (void*)p);
     }
     particles.ptr.DAEp->cx = cx;
     particles.ptr.DAEp->cy = cy;
