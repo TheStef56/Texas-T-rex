@@ -590,7 +590,7 @@ void animate_soil(Assets *A)  {
     float *x1 = &A->Back_1->dst.x;
     float *x2 = &A->Back_2->dst.x;
     *x1 -= SPEED;
-    *x2 -=SPEED;
+    *x2 -= SPEED;
 
     if (*x1 <= -WINDOW_WIDTH) {
         *x1 = WINDOW_WIDTH;
@@ -604,7 +604,7 @@ void animate_soil(Assets *A)  {
 }
 
 void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sounds) {
-    if (now - starts->Dino_start >= (size_t)1000/SPEED) {
+    if (now - starts->Dino_start >= (size_t)1000/START_SPEED) {
         starts->Dino_start = SDL_GetTicks();
         SDL_Texture *tmp = A->Dinos_txt;
         A->Dinos_txt = A->Dino->txt;
@@ -834,21 +834,21 @@ void spawn_bullet(Assets *A, DA* DAE) {
 }
 
 void spawn_entities(Assets *A, DA *DAE, Animations_start *starts, size_t now) {
-    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
+    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/START_SPEED) {
         spawn_bird(A, DAE);
         starts->Bird_spawn = SDL_GetTicks();        
     } else if (starts->Bird_spawn > now) {
         starts->Bird_spawn = SDL_GetTicks();         
     }
     
-    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
+    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/START_SPEED) {
         spawn_cacti(A, DAE);
         starts->Cactus_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
         starts->Cactus_spawn = SDL_GetTicks();
     }
     
-    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/SPEED) {
+    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/START_SPEED) {
         spawn_cloud(A, DAE);
         starts->Cloud_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
@@ -1013,7 +1013,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
         animate(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state, starts, SDL_GetTicks(), sounds);
         check_bcollisions(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, DA_pc, state);
         size_t now = SDL_GetTicks();
-        if (now - starts->Last_added_bullet >= 3500/SPEED && state->AMMO < 10) {
+        if (now - starts->Last_added_bullet >= 3500/START_SPEED && state->AMMO < 10) {
             state->AMMO++;
             starts->Last_added_bullet = now;
         }
