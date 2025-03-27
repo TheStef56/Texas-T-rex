@@ -532,7 +532,7 @@ void animate_dino(Assets* A, Animations_start *starts, size_t now) {
     
 }
 
-void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts, size_t now, State *state) {
+void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts, size_t now, State *state, Sounds *sounds) {
     bool reset_t = false;
     int dino_x = WINDOW_WIDTH/10 + DINO_W;
     int dino_y = WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H + (DINO_H - DINO_H*200/286);
@@ -540,6 +540,7 @@ void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts
         if (DAE->data[x] && (DAE->data[x]->txt == A->Bird_Up->txt || DAE->data[x]->txt == A->Bird_Down->txt)) {
             if (DAE->data[x]->dst.x <= dino_x){
                 state->GAMEOVER = true;
+                Mix_PlayChannel(-1, sounds->death_sound, 0);
                 continue;
             }
 
@@ -566,6 +567,7 @@ void animate_entities(Assets *A, DArrayOfEntities *DAE, Animations_start *starts
         } else if (DAE->data[x] && (DAE->data[x]->txt == A->Cactus_1->txt || DAE->data[x]->txt == A->Cactus_2->txt || DAE->data[x]->txt == A->Cactus_3->txt) ) {
             if (DAE->data[x]->dst.x <= dino_x - dino_x/4){
                 state->GAMEOVER = true;
+                Mix_PlayChannel(-1, sounds->death_sound, 0);
                 continue;
             }
             DAE->data[x]->dst.x -=(int)(ceil(SPEED));
@@ -597,10 +599,10 @@ void animate_bullets(DArrayOfBullets *DAE) {
     }
 }
 
-void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now) {      
+void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
     animate_soil(A);
     animate_dino(A, starts, now);
-    animate_entities(A, DAE, starts, now, state);
+    animate_entities(A, DAE, starts, now, state, sounds);
     animate_bullets(Bullets);
 }
 
@@ -838,7 +840,7 @@ void increment_speed(void) {
     }
 }
 
-void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations_start *starts, Assets *A, TTF_Font *font) {
+void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds) {
     if (state->RESTART) {
         state->RESTART = false;
         state->PAUSE = false;
@@ -862,7 +864,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, Animations
 
     if (!state->PAUSE && !state->GAMEOVER) {
         spawn_entities(A, DA_e, starts, SDL_GetTicks());
-        animate(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state, starts, SDL_GetTicks());
+        animate(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state, starts, SDL_GetTicks(), sounds);
         check_bcollisions(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state);
         size_t now = SDL_GetTicks();
         if (now - starts->Last_added_bullet >= 3500/SPEED && state->AMMO < 10) {
@@ -922,7 +924,8 @@ int main(int argc, char *argv[]) {
     };
     
     Sounds GameSounds = {
-        .shot_sound = Mix_LoadWAV("./assets/sound/shot.wav")
+        .shot_sound = Mix_LoadWAV("./assets/sound/shot.wav"),
+        .death_sound = Mix_LoadWAV("./assets/sound/death.wav")
     };
 
     TTF_Font *font = TTF_OpenFont("./assets/font/Muli-Bold.ttf", 120);
@@ -939,7 +942,7 @@ int main(int argc, char *argv[]) {
         SDL_RenderClear(renderer);
 
         manage_events(&GameState, &GameAssets, &Bullets, &GameSounds);
-        handle(&GameState, renderer, &DAE, &Bullets, &Starts, &GameAssets, font);
+        handle(&GameState, renderer, &DAE, &Bullets, &Starts, &GameAssets, font, &GameSounds);
         
         SDL_RenderPresent(renderer);
         size_t t2 = SDL_GetTicks();
