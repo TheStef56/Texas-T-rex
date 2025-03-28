@@ -30,6 +30,11 @@
 #define GUN_W FACTOR*111/100
 #define BULLET_H FACTOR*10/100
 #define BULLET_W FACTOR*24/100
+#define START_DA_SIZE 20
+#define GRAVITY 1
+#define MAX_PARTICLES 10
+#define MIN_PARTICLES 7
+#define PARTICLE_SIZE 5.0f
 
 #define PI 3.14159265358979323846
 
@@ -176,7 +181,6 @@ typedef struct{
     Mix_Chunk *death_sound;
 } Sounds;
 
-
 void cap_fps(size_t t1, size_t t2) {
     size_t frametime = 1000/(FPS);
     if (t2 - t1 < frametime) {
@@ -285,9 +289,9 @@ void destroy_assets(Assets *A) {
     if (DA->type == TYPE) { \
         typeof(DA->ptr.MEMBER) d = (typeof(DA->ptr.MEMBER))malloc(sizeof(typeof(DA->ptr.MEMBER[0]))); \
         d->count = 0; \
-        d->size = 20; \
-        d->data = (typeof(d->data))malloc(sizeof(typeof(d->data[0]))*20); \
-        memset(d->data, 0, sizeof(d->data)*20); \
+        d->size = START_DA_SIZE; \
+        d->data = (typeof(d->data))malloc(sizeof(typeof(d->data[0]))*START_DA_SIZE); \
+        memset(d->data, 0, sizeof(d->data)*START_DA_SIZE); \
         DA->ptr.MEMBER = d; \
         return; \
     }
@@ -414,7 +418,7 @@ void display_particles(State *state, SDL_Renderer *renderer, DArrayOfParticlesCL
             for (size_t y = 0; y < c->size; y++) {
                 Particle *p = c->data[y];
                 if (p != NULL) {
-                    CHECK_ERROR_int(SDL_SetRenderDrawColor(renderer, 0,0,0,255), state);
+                    CHECK_ERROR_int(SDL_SetRenderDrawColor(renderer, 76,76,76,255), state);
                     SDL_Rect r = {
                         .x = p->dst.x,
                         .y = p->dst.y,
@@ -694,14 +698,39 @@ void animate_bullets(DArrayOfBullets *DAb) {
 }
 
 void animate_particles(DArrayOfParticlesCLusters *Cluster) {
-    (void) Cluster;
+    for (size_t x = 0; x < Cluster->size; x++) {
+        DArrayOfParticles *c = Cluster->data[x];
+        if (Cluster->data[x] != NULL) {
+            if (c->cx <= 0.f) {
+                for (size_t i = 0; i < c->size; i++) {
+                    free(c->data[i]);
+                    c->data[i] = NULL;
+                }
+                free(Cluster->data[x]);
+                Cluster->data[x] = NULL;
+                Cluster->count--;
+                continue;
+            } 
+            for (size_t y = 0; y < c->size; y++) {
+                Particle* p = c->data[y];
+                if (c->data[y] != NULL) {
+                    p->vel.y += GRAVITY;
+                    p->dst.x -= p->vel.x;
+                    p->dst.y += p->vel.y;
+                    c->cx = p->dst.x;
+                    c->cy = p->dst.y;
+                }
+            }
+        }
+    }
 }
 
-void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
+void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, DArrayOfParticlesCLusters *Clusters, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
     animate_soil(A);
     animate_dino(A, starts, now, sounds);
     animate_entities(A, DAE, starts, now, state, sounds);
     animate_bullets(Bullets);
+    animate_particles(Clusters);
 }
 
 void spawn_bird(Assets *A, DA *DAE) {
@@ -800,13 +829,17 @@ void spawn_particles(DA *Clusters, float cx, float cy) {
     };
     init_DA(&particles);
 
-    for (int x = 0; x < 3; x++) {
+    int n_part = (rand()%(MAX_PARTICLES-MIN_PARTICLES))+MIN_PARTICLES;
+    for (int x = 0; x < n_part; x++) {
         Particle *p = (Particle*)malloc(sizeof(Particle));
         p->dst.x = cx;
         p->dst.y = cy;
-        p->dst.w = 3.0;
-        p->dst.h = 3.0;
-        p->vel = (Vec2f){ .x=0.f, .y=0.f};
+        p->dst.w = PARTICLE_SIZE;
+        p->dst.h = PARTICLE_SIZE;
+        p->vel = (Vec2f){ 
+            .x=SPEED + ((float)rand()/RAND_MAX*10.0f - 5.0f), 
+            .y=-(float)rand()/RAND_MAX*5
+        };
         DA_append(&particles, (void*)p);
     }
     particles.ptr.DAp->cx = cx;
@@ -947,7 +980,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
 
     if (!state->PAUSE && !state->GAMEOVER) {
         spawn_entities(A, DA_e, starts, SDL_GetTicks());
-        animate(A, DA_e->ptr.DAe, DA_b->ptr.DAb, state, starts, SDL_GetTicks(), sounds);
+        animate(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc->ptr.DApc, state, starts, SDL_GetTicks(), sounds);
         check_bcollisions(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc, state);
         size_t now = SDL_GetTicks();
         if (now - starts->Last_added_bullet >= 3500/START_SPEED && state->AMMO < 10) {
