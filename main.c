@@ -126,7 +126,7 @@ typedef struct{
 } Particle;
 
 typedef struct {
-    Particle **particles;
+    Particle **data;
     int cx;
     int cy;
     size_t count;
@@ -134,7 +134,7 @@ typedef struct {
 } DArrayOfParticles;
 
 typedef struct {
-    DArrayOfParticles **clusters;
+    DArrayOfParticles **data;
     size_t count;
     size_t size;
 } DArrayOfParticlesCLusters;
@@ -149,10 +149,10 @@ typedef enum {
 
 typedef struct {
     union {
-        DArrayOfEntities *DAEe;
-        DArrayOfBullets *DAEb;
-        DArrayOfParticles *DAEp;
-        DArrayOfParticlesCLusters *DAEpc;
+        DArrayOfEntities *DAe;
+        DArrayOfBullets *DAb;
+        DArrayOfParticles *DAp;
+        DArrayOfParticlesCLusters *DApc;
     } ptr;
     DAtype type;
 } DA;
@@ -286,28 +286,28 @@ void init_DA(DA *DA){
             d->size = 20;
             d->data = (Asset**)malloc(sizeof(Asset*)*20);
             memset(d->data, 0, sizeof(d->data)*20);
-            DA->ptr.DAEe = d;
+            DA->ptr.DAe = d;
     } else if (DA->type == DA_TYPE_BULLETS) {
             DArrayOfBullets *d = (DArrayOfBullets*)malloc(sizeof(DArrayOfBullets));
             d->count = 0;
             d->size = 20;
             d->data = (AssetRot**)malloc(sizeof(AssetRot*)*20);
             memset(d->data, 0, sizeof(d->data)*20);
-            DA->ptr.DAEb = d;
+            DA->ptr.DAb = d;
     } else if (DA->type == DA_TYPE_PARTICLES) {
             DArrayOfParticles *d = (DArrayOfParticles*)malloc(sizeof(DArrayOfParticles));
             d->count = 0;
             d->size = 9;
-            d->particles = (Particle**)malloc(sizeof(Particle*)*9);
-            memset(d->particles, 0, sizeof(d->particles)*9);
-            DA->ptr.DAEp = d;
+            d->data = (Particle**)malloc(sizeof(Particle*)*9);
+            memset(d->data, 0, sizeof(d->data)*9);
+            DA->ptr.DAp = d;
     } else if (DA->type == DA_TYPE_CLUSTERS) {
             DArrayOfParticlesCLusters *d = (DArrayOfParticlesCLusters*)malloc(sizeof(DArrayOfParticlesCLusters));
             d->count = 0;
             d->size = 20;
-            d->clusters = (DArrayOfParticles**)malloc(sizeof(DArrayOfParticles*)*20);
-            memset(d->clusters, 0, sizeof(d->clusters)*20);
-            DA->ptr.DAEpc = d;
+            d->data = (DArrayOfParticles**)malloc(sizeof(DArrayOfParticles*)*20);
+            memset(d->data, 0, sizeof(d->data)*20);
+            DA->ptr.DApc = d;
 
     }
 }
@@ -315,28 +315,28 @@ void init_DA(DA *DA){
 void uninit_DA(DA *DA) {
     switch(DA->type) {
         case DA_TYPE_ENTITIES:
-            for (size_t x = 0; x < DA->ptr.DAEe->size; x++) {
-                if (DA->ptr.DAEe->data[x]) free(DA->ptr.DAEe->data[x]);
+            for (size_t x = 0; x < DA->ptr.DAe->size; x++) {
+                if (DA->ptr.DAe->data[x]) free(DA->ptr.DAe->data[x]);
             }
-            free(DA->ptr.DAEe);
+            free(DA->ptr.DAe);
             break;
         case DA_TYPE_BULLETS: 
-            for (size_t x = 0; x < DA->ptr.DAEb->size; x++) {
-                if (DA->ptr.DAEb->data[x]) free(DA->ptr.DAEb->data[x]);
+            for (size_t x = 0; x < DA->ptr.DAb->size; x++) {
+                if (DA->ptr.DAb->data[x]) free(DA->ptr.DAb->data[x]);
             }
-            free(DA->ptr.DAEb);
+            free(DA->ptr.DAb);
             break;
         case DA_TYPE_PARTICLES:
-            for (size_t x = 0; x < DA->ptr.DAEp->size; x++) {
-                if (DA->ptr.DAEp->particles[x]) free(DA->ptr.DAEp->particles[x]);
+            for (size_t x = 0; x < DA->ptr.DAp->size; x++) {
+                if (DA->ptr.DAp->data[x]) free(DA->ptr.DAp->data[x]);
             }
-            free(DA->ptr.DAEp);
+            free(DA->ptr.DAp);
             break;
         case DA_TYPE_CLUSTERS:
-            for (size_t x = 0; x < DA->ptr.DAEpc->size; x++) {
-                if (DA->ptr.DAEpc->clusters[x]) free(DA->ptr.DAEpc->clusters[x]);
+            for (size_t x = 0; x < DA->ptr.DApc->size; x++) {
+                if (DA->ptr.DApc->data[x]) free(DA->ptr.DApc->data[x]);
             }
-            free(DA->ptr.DAEpc);
+            free(DA->ptr.DApc);
             break;
         
         default:
@@ -405,17 +405,17 @@ void display_bullets(State *state, SDL_Renderer *renderer, DArrayOfBullets *Bull
 
 void display_particles(State *state, SDL_Renderer *renderer, DArrayOfParticlesCLusters *Clusters) {
     for (size_t x = 0; x < Clusters->size; x++) {
-        DArrayOfParticles *c = Clusters->clusters[x];
+        DArrayOfParticles *c = Clusters->data[x];
         if (c != NULL) {
             for (size_t y = 0; y < c->size; y++) {
-                Particle *p = c->particles[y];
+                Particle *p = c->data[y];
                 if (p != NULL) {
                     CHECK_ERROR_int(SDL_SetRenderDrawColor(renderer, 0,0,0,255), state);
                     SDL_Rect r = {
-                        .x = p->x,
-                        .y = p->y,
-                        .w = p->w,
-                        .h = p->h
+                        .x = p->dst.x,
+                        .y = p->dst.y,
+                        .w = p->dst.w,
+                        .h = p->dst.h
                     };
                     CHECK_ERROR_int(SDL_RenderDrawRect(renderer, &r), state);
                     CHECK_ERROR_int(SDL_RenderFillRect(renderer, &r), state);
@@ -690,7 +690,7 @@ void animate_bullets(DArrayOfBullets *DAb) {
 }
 
 void animate_particles(DArrayOfParticlesCLusters *Cluster) {
-    
+    (void) Cluster;
 }
 
 void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *state, Animations_start *starts, size_t now, Sounds *sounds) {      
@@ -703,69 +703,69 @@ void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *
 void DA_append(DA *DA, void *ent) {
     switch (DA->type) {
         case  DA_TYPE_ENTITIES:
-            if (DA->ptr.DAEe->count == DA->ptr.DAEe->size - 1) {
-                DA->ptr.DAEe->data = (Asset**)realloc(DA->ptr.DAEe->data, sizeof(Asset*)*DA->ptr.DAEe->size*2);
-                memset(DA->ptr.DAEe->data + DA->ptr.DAEe->size, 0, sizeof(Asset*)*DA->ptr.DAEe->size);
-                DA->ptr.DAEe->size *= 2;
-                DA->ptr.DAEe->data[DA->ptr.DAEe->count] = (Asset*)ent;
-                DA->ptr.DAEe->count++;
+            if (DA->ptr.DAe->count == DA->ptr.DAe->size - 1) {
+                DA->ptr.DAe->data = (Asset**)realloc(DA->ptr.DAe->data, sizeof(Asset*)*DA->ptr.DAe->size*2);
+                memset(DA->ptr.DAe->data + DA->ptr.DAe->size, 0, sizeof(Asset*)*DA->ptr.DAe->size);
+                DA->ptr.DAe->size *= 2;
+                DA->ptr.DAe->data[DA->ptr.DAe->count] = (Asset*)ent;
+                DA->ptr.DAe->count++;
                 return;
             }
-            for (size_t x=0; x < DA->ptr.DAEe->size; x++) {
-                if (DA->ptr.DAEe->data[x] == NULL) {
-                    DA->ptr.DAEe->data[x] = (Asset*)ent;
-                    DA->ptr.DAEe->count++;
+            for (size_t x=0; x < DA->ptr.DAe->size; x++) {
+                if (DA->ptr.DAe->data[x] == NULL) {
+                    DA->ptr.DAe->data[x] = (Asset*)ent;
+                    DA->ptr.DAe->count++;
                     return;
                 }
             }
             break;
         case DA_TYPE_BULLETS:
-            if (DA->ptr.DAEb->count == DA->ptr.DAEb->size - 1) {
-                DA->ptr.DAEb->data = (AssetRot**)realloc(DA->ptr.DAEb->data, sizeof(AssetRot*)*DA->ptr.DAEb->size*2);
-                memset(DA->ptr.DAEb->data + DA->ptr.DAEb->size, 0, sizeof(AssetRot*)*DA->ptr.DAEb->size);
-                DA->ptr.DAEb->size *= 2;
-                DA->ptr.DAEb->data[DA->ptr.DAEb->count] = (AssetRot*)ent;
-                DA->ptr.DAEb->count++;
+            if (DA->ptr.DAb->count == DA->ptr.DAb->size - 1) {
+                DA->ptr.DAb->data = (AssetRot**)realloc(DA->ptr.DAb->data, sizeof(AssetRot*)*DA->ptr.DAb->size*2);
+                memset(DA->ptr.DAb->data + DA->ptr.DAb->size, 0, sizeof(AssetRot*)*DA->ptr.DAb->size);
+                DA->ptr.DAb->size *= 2;
+                DA->ptr.DAb->data[DA->ptr.DAb->count] = (AssetRot*)ent;
+                DA->ptr.DAb->count++;
                 return;
             }
-            for (size_t x=0; x < DA->ptr.DAEb->size; x++) {
-                if (DA->ptr.DAEb->data[x] == NULL) {
-                    DA->ptr.DAEb->data[x] = (AssetRot*)ent;
-                    DA->ptr.DAEb->count++;
+            for (size_t x=0; x < DA->ptr.DAb->size; x++) {
+                if (DA->ptr.DAb->data[x] == NULL) {
+                    DA->ptr.DAb->data[x] = (AssetRot*)ent;
+                    DA->ptr.DAb->count++;
                     return;
                 }
             }
             break;
         case DA_TYPE_PARTICLES:
-            if (DA->ptr.DAEp->count == DA->ptr.DAEp->size - 1) {
-                DA->ptr.DAEp->particles = (Particle**)realloc(DA->ptr.DAEp->particles, sizeof(Particle*)*DA->ptr.DAEp->size*2);
-                memset(DA->ptr.DAEp->particles + DA->ptr.DAEp->size, 0, sizeof(Particle*)*DA->ptr.DAEp->size);
-                DA->ptr.DAEp->size *= 2;
-                DA->ptr.DAEp->particles[DA->ptr.DAEp->count] = (Particle*)ent;
-                DA->ptr.DAEp->count++;
+            if (DA->ptr.DAp->count == DA->ptr.DAp->size - 1) {
+                DA->ptr.DAp->data = (Particle**)realloc(DA->ptr.DAp->data, sizeof(Particle*)*DA->ptr.DAp->size*2);
+                memset(DA->ptr.DAp->data + DA->ptr.DAp->size, 0, sizeof(Particle*)*DA->ptr.DAp->size);
+                DA->ptr.DAp->size *= 2;
+                DA->ptr.DAp->data[DA->ptr.DAp->count] = (Particle*)ent;
+                DA->ptr.DAp->count++;
                 return;
             }
-            for (size_t x=0; x < DA->ptr.DAEp->size; x++) {
-                if (DA->ptr.DAEp->particles[x] == NULL) {
-                    DA->ptr.DAEp->particles[x] = (Particle*)ent;
-                    DA->ptr.DAEp->count++;
+            for (size_t x=0; x < DA->ptr.DAp->size; x++) {
+                if (DA->ptr.DAp->data[x] == NULL) {
+                    DA->ptr.DAp->data[x] = (Particle*)ent;
+                    DA->ptr.DAp->count++;
                     return;
                 }
             }
             break;
         case DA_TYPE_CLUSTERS:
-            if (DA->ptr.DAEpc->count == DA->ptr.DAEpc->size - 1) {
-                DA->ptr.DAEpc->clusters = (DArrayOfParticles**)realloc(DA->ptr.DAEpc->clusters, sizeof(DArrayOfParticles*)*DA->ptr.DAEpc->size*2);
-                memset(DA->ptr.DAEpc->clusters + DA->ptr.DAEpc->size, 0, sizeof(DArrayOfParticles*)*DA->ptr.DAEpc->size);
-                DA->ptr.DAEpc->size *= 2;
-                DA->ptr.DAEpc->clusters[DA->ptr.DAEpc->count] = (DArrayOfParticles*)ent;
-                DA->ptr.DAEpc->count++;
+            if (DA->ptr.DApc->count == DA->ptr.DApc->size - 1) {
+                DA->ptr.DApc->data = (DArrayOfParticles**)realloc(DA->ptr.DApc->data, sizeof(DArrayOfParticles*)*DA->ptr.DApc->size*2);
+                memset(DA->ptr.DApc->data + DA->ptr.DApc->size, 0, sizeof(DArrayOfParticles*)*DA->ptr.DApc->size);
+                DA->ptr.DApc->size *= 2;
+                DA->ptr.DApc->data[DA->ptr.DApc->count] = (DArrayOfParticles*)ent;
+                DA->ptr.DApc->count++;
                 return;
             }
-            for (size_t x=0; x < DA->ptr.DAEpc->size; x++) {
-                if (DA->ptr.DAEpc->clusters[x] == NULL) {
-                    DA->ptr.DAEpc->clusters[x] = (DArrayOfParticles*)ent;
-                    DA->ptr.DAEpc->count++;
+            for (size_t x=0; x < DA->ptr.DApc->size; x++) {
+                if (DA->ptr.DApc->data[x] == NULL) {
+                    DA->ptr.DApc->data[x] = (DArrayOfParticles*)ent;
+                    DA->ptr.DApc->count++;
                     return;
                 }
             }
@@ -878,9 +878,9 @@ void spawn_particles(DA *Clusters, float cx, float cy) {
         p->vel = (Vec2f){ .x=0.f, .y=0.f};
         DA_append(&particles, (void*)p);
     }
-    particles.ptr.DAEp->cx = cx;
-    particles.ptr.DAEp->cy = cy;
-    DA_append(Clusters, (void*)particles.ptr.DAEp);
+    particles.ptr.DAp->cx = cx;
+    particles.ptr.DAp->cy = cy;
+    DA_append(Clusters, (void*)particles.ptr.DAp);
 }
 
 void check_bcollisions(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, DA *Clusters, State *state) {
@@ -1008,7 +1008,7 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
         return;
     }
 
-    display(state, renderer, DA_e->ptr.DAEe, DA_b->ptr.DAEb, DA_pc->ptr.DAEpc, A, font);
+    display(state, renderer, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc->ptr.DApc, A, font);
     if (state->START) {
         state->PAUSE = true;
         display_start(renderer, state, font);
@@ -1016,8 +1016,8 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
 
     if (!state->PAUSE && !state->GAMEOVER) {
         spawn_entities(A, DA_e, starts, SDL_GetTicks());
-        animate(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, state, starts, SDL_GetTicks(), sounds);
-        check_bcollisions(A, DA_e->ptr.DAEe, DA_b->ptr.DAEb, DA_pc, state);
+        animate(A, DA_e->ptr.DAe, DA_b->ptr.DAb, state, starts, SDL_GetTicks(), sounds);
+        check_bcollisions(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc, state);
         size_t now = SDL_GetTicks();
         if (now - starts->Last_added_bullet >= 3500/START_SPEED && state->AMMO < 10) {
             state->AMMO++;
