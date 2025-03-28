@@ -8,12 +8,16 @@
 #include <strings.h>
 #include <time.h>
 
-#define FACTOR 120
+
+// GAME/WINDOW RELATED VALUES
+#define FACTOR 120 // window size factor
 #define FPS 60
 #define START_SPEED 4
 #define START_SPEED_B 15
 #define WINDOW_WIDTH  16*FACTOR
 #define WINDOW_HEIGHT  9*FACTOR
+
+// ASSETS RELATED VALUES
 #define SOIL_HEIGHT FACTOR*60/100
 #define SOIL_Y WINDOW_HEIGHT/10
 #define DINO_W FACTOR*346/100
@@ -30,12 +34,16 @@
 #define GUN_W FACTOR*111/100
 #define BULLET_H FACTOR*10/100
 #define BULLET_W FACTOR*24/100
-#define START_DA_SIZE 20
+
+// PARTICLES RELATED VALUES
 #define GRAVITY 1
 #define MAX_PARTICLES 10
 #define MIN_PARTICLES 7
 #define PARTICLE_SIZE 5.0f
+#define P_BOUNCINESS 0.5 // 1.0 is 100% bounciness
+#define P_FRICTION 60 // minimum  = 1 == NO FRICTION, >infinity == MAXIMUM FRICTION  
 
+#define START_DA_SIZE 20 // dynamic array size when initialized
 #define PI 3.14159265358979323846
 
 float SPEED = START_SPEED/(FPS/60.0f);
@@ -130,6 +138,7 @@ typedef struct {
 typedef struct{
     SDL_FRect dst;
     Vec2f vel;
+    size_t ground_h;
 } Particle;
 
 typedef struct {
@@ -701,7 +710,26 @@ void animate_particles(DArrayOfParticlesCLusters *Cluster) {
     for (size_t x = 0; x < Cluster->size; x++) {
         DArrayOfParticles *c = Cluster->data[x];
         if (Cluster->data[x] != NULL) {
-            if (c->cx <= 0.f) {
+            bool despawn = true;
+            for (size_t y = 0; y < c->size; y++) {
+                Particle* p = c->data[y];
+                if (c->data[y] != NULL) {
+                    if (p->dst.x > 0) despawn = false;
+                    p->vel.y += GRAVITY;
+                    if (p->dst.y >= p->ground_h) {
+                        p->vel.y = -p->vel.y*P_BOUNCINESS;
+                        if (p->vel.y < -p->dst.h) {
+                            p->dst.y -= p->dst.h;
+                        } else {
+                            p->vel.y = 0.f;
+                        }
+                    }
+                    p->dst.y += p->vel.y;
+                    p->dst.x -= p->vel.x;
+                    p->vel.x += (SPEED - p->vel.x)/P_FRICTION;
+                }
+            }
+            if (despawn) {
                 for (size_t i = 0; i < c->size; i++) {
                     free(c->data[i]);
                     c->data[i] = NULL;
@@ -710,16 +738,6 @@ void animate_particles(DArrayOfParticlesCLusters *Cluster) {
                 Cluster->data[x] = NULL;
                 Cluster->count--;
                 continue;
-            } 
-            for (size_t y = 0; y < c->size; y++) {
-                Particle* p = c->data[y];
-                if (c->data[y] != NULL) {
-                    p->vel.y += GRAVITY;
-                    p->dst.x -= p->vel.x;
-                    p->dst.y += p->vel.y;
-                    c->cx = p->dst.x;
-                    c->cy = p->dst.y;
-                }
             }
         }
     }
@@ -840,6 +858,7 @@ void spawn_particles(DA *Clusters, float cx, float cy) {
             .x=SPEED + ((float)rand()/RAND_MAX*10.0f - 5.0f), 
             .y=-(float)rand()/RAND_MAX*5
         };
+        p->ground_h = WINDOW_HEIGHT - SOIL_Y + 10;
         DA_append(&particles, (void*)p);
     }
     particles.ptr.DAp->cx = cx;
@@ -1087,12 +1106,11 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+
 // TODO:
-// - add sound:
+// - sound:
 //      entitieas death sound
-// - add mute option and volume regulation
-// - add enemies death particles:
-//      decide dimensions, randomize quantity    
-//      make animate them with gravity and rolling background velocity
-//      make them bouncy
-//      add inertia
+//      increase a bit steps volume
+//      add mute option and volume regulation
+// - visual:
+//      hide cursor and put a custom cursor
