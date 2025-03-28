@@ -344,6 +344,31 @@ void uninit_DA(DA *DA) {
     }
 }
 
+#define DA_APPEND_CASE(TYPE, MEMBER)                                                                                                                                \
+    if (DA->type == TYPE) {                                                                                                                                         \
+        if (DA->ptr.MEMBER->count == DA->ptr.MEMBER->size - 1) {                                                                                                    \
+            DA->ptr.MEMBER->data = (typeof(DA->ptr.MEMBER->data))realloc(DA->ptr.MEMBER->data, sizeof(typeof(DA->ptr.MEMBER->data[0])) * DA->ptr.MEMBER->size * 2); \
+            memset(DA->ptr.MEMBER->data + DA->ptr.MEMBER->size, 0, sizeof(typeof(DA->ptr.MEMBER->data[0])) * DA->ptr.MEMBER->size);                                 \
+            DA->ptr.MEMBER->size *= 2;                                                                                                                              \
+        }                                                                                                                                                           \
+        for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {                                                                                                         \
+            if (DA->ptr.MEMBER->data[x] == NULL) {                                                                                                                  \
+                DA->ptr.MEMBER->data[x] = (typeof(DA->ptr.MEMBER->data[0]))ent;                                                                                     \
+                DA->ptr.MEMBER->count++;                                                                                                                            \
+                return;                                                                                                                                             \
+            }                                                                                                                                                       \
+        }                                                                                                                                                           \
+        return;                                                                                                                                                     \
+    }                                                                                                                                                               \
+
+
+void DA_append(DA *DA, void *ent) {
+    DA_APPEND_CASE(DA_TYPE_ENTITIES, DAe)
+    DA_APPEND_CASE(DA_TYPE_BULLETS, DAb)
+    DA_APPEND_CASE(DA_TYPE_PARTICLES, DAp)
+    DA_APPEND_CASE(DA_TYPE_CLUSTERS, DApc)
+}
+
 float get_angle2(int ax, int ay, int bx, int by) {
     float angle = atan2(ay - by, ax - bx) * 180/PI + 180;
     return angle;
@@ -698,79 +723,6 @@ void animate(Assets *A, DArrayOfEntities *DAE, DArrayOfBullets *Bullets, State *
     animate_dino(A, starts, now, sounds);
     animate_entities(A, DAE, starts, now, state, sounds);
     animate_bullets(Bullets);
-}
-
-void DA_append(DA *DA, void *ent) {
-    switch (DA->type) {
-        case  DA_TYPE_ENTITIES:
-            if (DA->ptr.DAe->count == DA->ptr.DAe->size - 1) {
-                DA->ptr.DAe->data = (Asset**)realloc(DA->ptr.DAe->data, sizeof(Asset*)*DA->ptr.DAe->size*2);
-                memset(DA->ptr.DAe->data + DA->ptr.DAe->size, 0, sizeof(Asset*)*DA->ptr.DAe->size);
-                DA->ptr.DAe->size *= 2;
-                DA->ptr.DAe->data[DA->ptr.DAe->count] = (Asset*)ent;
-                DA->ptr.DAe->count++;
-                return;
-            }
-            for (size_t x=0; x < DA->ptr.DAe->size; x++) {
-                if (DA->ptr.DAe->data[x] == NULL) {
-                    DA->ptr.DAe->data[x] = (Asset*)ent;
-                    DA->ptr.DAe->count++;
-                    return;
-                }
-            }
-            break;
-        case DA_TYPE_BULLETS:
-            if (DA->ptr.DAb->count == DA->ptr.DAb->size - 1) {
-                DA->ptr.DAb->data = (AssetRot**)realloc(DA->ptr.DAb->data, sizeof(AssetRot*)*DA->ptr.DAb->size*2);
-                memset(DA->ptr.DAb->data + DA->ptr.DAb->size, 0, sizeof(AssetRot*)*DA->ptr.DAb->size);
-                DA->ptr.DAb->size *= 2;
-                DA->ptr.DAb->data[DA->ptr.DAb->count] = (AssetRot*)ent;
-                DA->ptr.DAb->count++;
-                return;
-            }
-            for (size_t x=0; x < DA->ptr.DAb->size; x++) {
-                if (DA->ptr.DAb->data[x] == NULL) {
-                    DA->ptr.DAb->data[x] = (AssetRot*)ent;
-                    DA->ptr.DAb->count++;
-                    return;
-                }
-            }
-            break;
-        case DA_TYPE_PARTICLES:
-            if (DA->ptr.DAp->count == DA->ptr.DAp->size - 1) {
-                DA->ptr.DAp->data = (Particle**)realloc(DA->ptr.DAp->data, sizeof(Particle*)*DA->ptr.DAp->size*2);
-                memset(DA->ptr.DAp->data + DA->ptr.DAp->size, 0, sizeof(Particle*)*DA->ptr.DAp->size);
-                DA->ptr.DAp->size *= 2;
-                DA->ptr.DAp->data[DA->ptr.DAp->count] = (Particle*)ent;
-                DA->ptr.DAp->count++;
-                return;
-            }
-            for (size_t x=0; x < DA->ptr.DAp->size; x++) {
-                if (DA->ptr.DAp->data[x] == NULL) {
-                    DA->ptr.DAp->data[x] = (Particle*)ent;
-                    DA->ptr.DAp->count++;
-                    return;
-                }
-            }
-            break;
-        case DA_TYPE_CLUSTERS:
-            if (DA->ptr.DApc->count == DA->ptr.DApc->size - 1) {
-                DA->ptr.DApc->data = (DArrayOfParticles**)realloc(DA->ptr.DApc->data, sizeof(DArrayOfParticles*)*DA->ptr.DApc->size*2);
-                memset(DA->ptr.DApc->data + DA->ptr.DApc->size, 0, sizeof(DArrayOfParticles*)*DA->ptr.DApc->size);
-                DA->ptr.DApc->size *= 2;
-                DA->ptr.DApc->data[DA->ptr.DApc->count] = (DArrayOfParticles*)ent;
-                DA->ptr.DApc->count++;
-                return;
-            }
-            for (size_t x=0; x < DA->ptr.DApc->size; x++) {
-                if (DA->ptr.DApc->data[x] == NULL) {
-                    DA->ptr.DApc->data[x] = (DArrayOfParticles*)ent;
-                    DA->ptr.DApc->count++;
-                    return;
-                }
-            }
-    }
-    
 }
 
 void spawn_bird(Assets *A, DA *DAE) {
