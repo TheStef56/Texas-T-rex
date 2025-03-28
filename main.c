@@ -11,8 +11,10 @@
 
 // GAME/WINDOW RELATED VALUES
 #define FACTOR 120 // window size factor
-#define FPS 60
+#define FPS 120
 #define START_SPEED 4
+#define SPEED_CAP 0.f
+#define INCREMENTAL_SPEED 0.08f
 #define START_SPEED_B 15
 #define WINDOW_WIDTH  16*FACTOR
 #define WINDOW_HEIGHT  9*FACTOR
@@ -351,10 +353,13 @@ void uninit_DA(DA *DA) {
 
 void free_particles(DArrayOfParticlesCLusters *DApc) {
     for (size_t x = 0; x < DApc->size; x++) {
-        if (DApc->data[x]) {
-            for (size_t y = 0; y < DApc->data[x]->size; y++) {
-                if (DApc->data[y]->data[y]) {
-                    free(DApc->data[y]->data[y]);
+        DArrayOfParticles *ap = DApc->data[x];
+        if (ap != NULL) {
+            for (size_t y = 0; y < ap->size; y++) {
+                Particle *p = ap->data[y]; 
+                if (p != NULL) {
+                    free(p);
+                    p = NULL;
                 }
             }
         }
@@ -637,7 +642,7 @@ void animate_soil(Assets *A)  {
 }
 
 void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sounds) {
-    if (now - starts->Dino_start >= (size_t)1000/START_SPEED) {
+    if (now - starts->Dino_start >= (size_t)1000/SPEED) {
         starts->Dino_start = SDL_GetTicks();
         SDL_Texture *tmp = A->Dinos_txt;
         A->Dinos_txt = A->Dino->txt;
@@ -832,21 +837,21 @@ void spawn_bullet(Assets *A, DA* DAe) {
 }
 
 void spawn_entities(Assets *A, DA *DAe, Animations_start *starts, size_t now) {
-    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/START_SPEED) {
+    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
         spawn_bird(A, DAe);
         starts->Bird_spawn = SDL_GetTicks();        
     } else if (starts->Bird_spawn > now) {
         starts->Bird_spawn = SDL_GetTicks();         
     }
     
-    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/START_SPEED) {
+    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
         spawn_cacti(A, DAe);
         starts->Cactus_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
         starts->Cactus_spawn = SDL_GetTicks();
     }
     
-    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/START_SPEED) {
+    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/SPEED) {
         spawn_cloud(A, DAe);
         starts->Cloud_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
@@ -980,27 +985,27 @@ void manage_events(State* state, Assets* A, DA *DAe, Sounds *sounds) {
     }
 }
 
-void increment_speed(size_t lrt) {
-    size_t now = SDL_GetTicks() - lrt;
-    if (now < 90000) {
-        SPEED = (START_SPEED + (8.0f*now/90000.0f))/(FPS/60.0f);
-    }
+void increment_speed() {
+    if (SPEED_CAP != 0.f && SPEED >= SPEED_CAP) return;
+    SPEED += INCREMENTAL_SPEED/FPS/(FPS/60.0f);
 }
 
-void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds, size_t *lrt) {
+void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc, Animations_start *starts, Assets *A, TTF_Font *font, Sounds *sounds) {
     if (state->RESTART) {
         state->RESTART = false;
         state->PAUSE = false;
         state->POINTS = 0;
         state->AMMO = 0;
         SPEED = START_SPEED/(FPS/60.f);
-        *lrt = SDL_GetTicks();
         destroy_assets(A);
         init_assets(renderer, A);
+        free_particles(DA_pc->ptr.DApc);
         uninit_DA(DA_e);
         uninit_DA(DA_b);
+        uninit_DA(DA_pc);
         init_DA(DA_e);
         init_DA(DA_b);
+        init_DA(DA_pc);
         return;
     }
 
@@ -1015,11 +1020,11 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
         animate(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc->ptr.DApc, state, starts, SDL_GetTicks(), sounds);
         check_bcollisions(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc, state);
         size_t now = SDL_GetTicks();
-        if (now - starts->Last_added_bullet >= 3500/START_SPEED && state->AMMO < 10) {
+        if (now - starts->Last_added_bullet >= 3500/SPEED && state->AMMO < 10) {
             state->AMMO++;
             starts->Last_added_bullet = now;
         }
-        increment_speed(*lrt);
+        increment_speed();
     } else if (!state->START && !state->GAMEOVER){
         display_menu(renderer, state, font);
         display_pause(renderer, state, font);
@@ -1034,7 +1039,6 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
 int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
-    size_t last_round_ticks = SDL_GetTicks();
     State GameState = {
         .CLOSE = false,
         .PAUSE = false,
@@ -1102,7 +1106,7 @@ int main(int argc, char *argv[]) {
         manage_events(&GameState, &GameAssets, &Bullets, &GameSounds);
         handle(&GameState, renderer,
             &DAe, &Bullets, &Clusters,
-            &Starts, &GameAssets, font, &GameSounds, &last_round_ticks);
+            &Starts, &GameAssets, font, &GameSounds);
         
         SDL_RenderPresent(renderer);
         size_t t2 = SDL_GetTicks();
