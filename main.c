@@ -42,6 +42,8 @@
 #define PARTICLE_SIZE 5.0f
 #define P_BOUNCINESS 0.5 // 1.0 is 100% bounciness
 #define P_FRICTION 60 // minimum  = 1 == NO FRICTION, >infinity == MAXIMUM FRICTION  
+#define SPREAD 12.0f
+#define VERTICAL_BUMP 10.0f
 
 #define START_DA_SIZE 20 // dynamic array size when initialized
 #define PI 3.14159265358979323846
@@ -855,8 +857,8 @@ void spawn_particles(DA *Clusters, float cx, float cy) {
         p->dst.w = PARTICLE_SIZE;
         p->dst.h = PARTICLE_SIZE;
         p->vel = (Vec2f){ 
-            .x=SPEED + ((float)rand()/RAND_MAX*10.0f - 5.0f), 
-            .y=-(float)rand()/RAND_MAX*5
+            .x=SPEED + ((float)rand()/RAND_MAX*SPREAD - (SPREAD/2.0f)), 
+            .y=-(float)rand()/RAND_MAX*VERTICAL_BUMP
         };
         p->ground_h = WINDOW_HEIGHT - SOIL_Y + 10;
         DA_append(&particles, (void*)p);
