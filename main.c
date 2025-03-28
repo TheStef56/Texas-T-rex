@@ -37,6 +37,8 @@ float SPEED = START_SPEED/(FPS/60.0f);
 float BULLET_SPEED = START_SPEED_B/(FPS/60.0f);
 
 #define LOG(...) (SDL_LogMessage(SDL_LOG_CATEGORY_APPLICATION, SDL_LOG_PRIORITY_INFO, __VA_ARGS__))
+#define UNREACHABLE() do {printf("UNREACHABLE, LINE: %d", __LINE__); exit(1);} while (0);
+
 
 #define CHECK_ERROR_int(code, state) do {                   \
     typeof(code) _code = (code);                            \
@@ -279,94 +281,71 @@ void destroy_assets(Assets *A) {
     if (A->Backs[2]) SDL_DestroyTexture(A->Backs[2]);
 }
 
-void init_DA(DA *DA){
-    if (DA->type == DA_TYPE_ENTITIES) {
-            DArrayOfEntities *d = (DArrayOfEntities*)malloc(sizeof(DArrayOfEntities));
-            d->count = 0;
-            d->size = 20;
-            d->data = (Asset**)malloc(sizeof(Asset*)*20);
-            memset(d->data, 0, sizeof(d->data)*20);
-            DA->ptr.DAe = d;
-    } else if (DA->type == DA_TYPE_BULLETS) {
-            DArrayOfBullets *d = (DArrayOfBullets*)malloc(sizeof(DArrayOfBullets));
-            d->count = 0;
-            d->size = 20;
-            d->data = (AssetRot**)malloc(sizeof(AssetRot*)*20);
-            memset(d->data, 0, sizeof(d->data)*20);
-            DA->ptr.DAb = d;
-    } else if (DA->type == DA_TYPE_PARTICLES) {
-            DArrayOfParticles *d = (DArrayOfParticles*)malloc(sizeof(DArrayOfParticles));
-            d->count = 0;
-            d->size = 9;
-            d->data = (Particle**)malloc(sizeof(Particle*)*9);
-            memset(d->data, 0, sizeof(d->data)*9);
-            DA->ptr.DAp = d;
-    } else if (DA->type == DA_TYPE_CLUSTERS) {
-            DArrayOfParticlesCLusters *d = (DArrayOfParticlesCLusters*)malloc(sizeof(DArrayOfParticlesCLusters));
-            d->count = 0;
-            d->size = 20;
-            d->data = (DArrayOfParticles**)malloc(sizeof(DArrayOfParticles*)*20);
-            memset(d->data, 0, sizeof(d->data)*20);
-            DA->ptr.DApc = d;
-
+#define DA_INIT_CASE(TYPE, MEMBER) \
+    if (DA->type == TYPE) { \
+        typeof(DA->ptr.MEMBER) d = (typeof(DA->ptr.MEMBER))malloc(sizeof(typeof(DA->ptr.MEMBER[0]))); \
+        d->count = 0; \
+        d->size = 20; \
+        d->data = (typeof(d->data))malloc(sizeof(typeof(d->data[0]))*20); \
+        memset(d->data, 0, sizeof(d->data)*20); \
+        DA->ptr.MEMBER = d; \
+        return; \
     }
+
+void init_DA(DA *DA){
+    DA_INIT_CASE(DA_TYPE_ENTITIES, DAe)
+    DA_INIT_CASE(DA_TYPE_BULLETS, DAb)
+    DA_INIT_CASE(DA_TYPE_PARTICLES, DAp)
+    DA_INIT_CASE(DA_TYPE_CLUSTERS, DApc)
 }
+
+#define DA_UNINIT_CASE(TYPE, MEMBER) \
+    case TYPE: \
+    for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) { \
+        if (DA->ptr.MEMBER->data[x]) free(DA->ptr.MEMBER->data[x]); \
+    } \
+    free(DA->ptr.MEMBER); \
+    break; \
 
 void uninit_DA(DA *DA) {
     switch(DA->type) {
-        case DA_TYPE_ENTITIES:
-            for (size_t x = 0; x < DA->ptr.DAe->size; x++) {
-                if (DA->ptr.DAe->data[x]) free(DA->ptr.DAe->data[x]);
-            }
-            free(DA->ptr.DAe);
-            break;
-        case DA_TYPE_BULLETS: 
-            for (size_t x = 0; x < DA->ptr.DAb->size; x++) {
-                if (DA->ptr.DAb->data[x]) free(DA->ptr.DAb->data[x]);
-            }
-            free(DA->ptr.DAb);
-            break;
-        case DA_TYPE_PARTICLES:
-            for (size_t x = 0; x < DA->ptr.DAp->size; x++) {
-                if (DA->ptr.DAp->data[x]) free(DA->ptr.DAp->data[x]);
-            }
-            free(DA->ptr.DAp);
-            break;
-        case DA_TYPE_CLUSTERS:
-            for (size_t x = 0; x < DA->ptr.DApc->size; x++) {
-                if (DA->ptr.DApc->data[x]) free(DA->ptr.DApc->data[x]);
-            }
-            free(DA->ptr.DApc);
-            break;
-        
+        DA_UNINIT_CASE(DA_TYPE_ENTITIES, DAe)
+        DA_UNINIT_CASE(DA_TYPE_BULLETS, DAb)
+        DA_UNINIT_CASE(DA_TYPE_PARTICLES, DAp)
+        DA_UNINIT_CASE(DA_TYPE_CLUSTERS, DApc)
         default:
             break;
     }
 }
 
-#define DA_APPEND_CASE(TYPE, MEMBER)                                                                                                                                \
-    if (DA->type == TYPE) {                                                                                                                                         \
-        if (DA->ptr.MEMBER->count == DA->ptr.MEMBER->size - 1) {                                                                                                    \
+#define DA_APPEND_CASE(TYPE, MEMBER) \
+    case TYPE: \
+        if (DA->ptr.MEMBER->count == DA->ptr.MEMBER->size - 1) { \
             DA->ptr.MEMBER->data = (typeof(DA->ptr.MEMBER->data))realloc(DA->ptr.MEMBER->data, sizeof(typeof(DA->ptr.MEMBER->data[0])) * DA->ptr.MEMBER->size * 2); \
-            memset(DA->ptr.MEMBER->data + DA->ptr.MEMBER->size, 0, sizeof(typeof(DA->ptr.MEMBER->data[0])) * DA->ptr.MEMBER->size);                                 \
-            DA->ptr.MEMBER->size *= 2;                                                                                                                              \
-        }                                                                                                                                                           \
-        for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {                                                                                                         \
-            if (DA->ptr.MEMBER->data[x] == NULL) {                                                                                                                  \
-                DA->ptr.MEMBER->data[x] = (typeof(DA->ptr.MEMBER->data[0]))ent;                                                                                     \
-                DA->ptr.MEMBER->count++;                                                                                                                            \
-                return;                                                                                                                                             \
-            }                                                                                                                                                       \
-        }                                                                                                                                                           \
-        return;                                                                                                                                                     \
-    }                                                                                                                                                               \
+            memset(DA->ptr.MEMBER->data + DA->ptr.MEMBER->size, 0, sizeof(typeof(DA->ptr.MEMBER->data[0])) * DA->ptr.MEMBER->size); \
+            DA->ptr.MEMBER->size *= 2; \
+        } \
+        for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) { \
+            if (DA->ptr.MEMBER->data[x] == NULL) { \
+                DA->ptr.MEMBER->data[x] = (typeof(DA->ptr.MEMBER->data[0]))ent; \
+                DA->ptr.MEMBER->count++; \
+                return; \
+            } \
+        } \
+        break; \
 
 
 void DA_append(DA *DA, void *ent) {
-    DA_APPEND_CASE(DA_TYPE_ENTITIES, DAe)
-    DA_APPEND_CASE(DA_TYPE_BULLETS, DAb)
-    DA_APPEND_CASE(DA_TYPE_PARTICLES, DAp)
-    DA_APPEND_CASE(DA_TYPE_CLUSTERS, DApc)
+    switch (DA->type) {
+        DA_APPEND_CASE(DA_TYPE_ENTITIES, DAe)
+        DA_APPEND_CASE(DA_TYPE_BULLETS, DAb)
+        DA_APPEND_CASE(DA_TYPE_PARTICLES, DAp)
+        DA_APPEND_CASE(DA_TYPE_CLUSTERS, DApc)
+        default:
+            UNREACHABLE();
+            break;
+    }
+    
 }
 
 float get_angle2(int ax, int ay, int bx, int by) {
