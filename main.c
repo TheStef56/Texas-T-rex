@@ -11,7 +11,7 @@
 
 // GAME/WINDOW RELATED VALUES
 #define FACTOR 120 // window size factor
-#define FPS 120
+#define FPS 60
 #define START_SPEED 4
 #define SPEED_CAP 0.f
 #define INCREMENTAL_SPEED 0.08f
@@ -192,6 +192,8 @@ typedef struct{
     Mix_Chunk *stepl_sound;
     Mix_Chunk *stepr_sound;
     Mix_Chunk *death_sound;
+    Mix_Chunk *bird_death_sound;
+    Mix_Chunk *cactus_death_sound;
 } Sounds;
 
 void cap_fps(size_t t1, size_t t2) {
@@ -645,7 +647,7 @@ void animate_soil(Assets *A)  {
 }
 
 void animate_dino(Assets* A, Animations_start *starts, size_t now, Sounds *sounds) {
-    if (now - starts->Dino_start >= (size_t)1000/SPEED) {
+    if (now - starts->Dino_start >= (size_t)1000/(SPEED*(FPS/60.0f))) {
         starts->Dino_start = SDL_GetTicks();
         SDL_Texture *tmp = A->Dinos_txt;
         A->Dinos_txt = A->Dino->txt;
@@ -840,21 +842,21 @@ void spawn_bullet(Assets *A, DA* DAe) {
 }
 
 void spawn_entities(Assets *A, DA *DAe, Animations_start *starts, size_t now) {
-    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
+    if (now - starts->Bird_spawn >= (size_t)(rand()%15000 + 7500)/(SPEED*(FPS/60.0f))) {
         spawn_bird(A, DAe);
         starts->Bird_spawn = SDL_GetTicks();        
     } else if (starts->Bird_spawn > now) {
         starts->Bird_spawn = SDL_GetTicks();         
     }
     
-    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/SPEED) {
+    if (now - starts->Cactus_spawn >= (size_t)(rand()%15000 + 7500)/(SPEED*(FPS/60.0f))) {
         spawn_cacti(A, DAe);
         starts->Cactus_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
         starts->Cactus_spawn = SDL_GetTicks();
     }
     
-    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/SPEED) {
+    if (now - starts->Cloud_spawn >= (size_t)(rand()%25000 + 5000)/(SPEED*(FPS/60.0f))) {
         spawn_cloud(A, DAe);
         starts->Cloud_spawn = SDL_GetTicks();
     } else if (starts->Cactus_spawn > now){
@@ -887,7 +889,7 @@ void spawn_particles(DA *Clusters, float cx, float cy) {
     DA_append(Clusters, (void*)particles.ptr.DAp);
 }
 
-void check_bcollisions(Assets *A, DArrayOfEntities *DAe, DArrayOfBullets *Bullets, DA *Clusters, State *state) {
+void check_bcollisions(Assets *A, DArrayOfEntities *DAe, DArrayOfBullets *Bullets, DA *Clusters, State *state, Sounds *sounds) {
     for (size_t x = 0; x < DAe->size; x++) {
         for (size_t y = 0; y < Bullets->size; y++) {
             if (DAe->data[x] && Bullets->data[y] && DAe->data[x]->txt != A->Cloud->txt) {
@@ -912,8 +914,10 @@ void check_bcollisions(Assets *A, DArrayOfEntities *DAe, DArrayOfBullets *Bullet
 
                     if (ent->txt == A->Bird_Down->txt || ent->txt == A->Bird_Up->txt) {
                         state->POINTS += 20;
+                        Mix_PlayChannel(-1, sounds->bird_death_sound, 0);
                     } else {
-                         state->POINTS += 10;
+                        Mix_PlayChannel(-1, sounds->cactus_death_sound, 0);
+                        state->POINTS += 10;
                     }
                     
                     spawn_particles(Clusters, ent->dst.x, ent->dst.y);
@@ -935,6 +939,8 @@ void free_sounds(Sounds *sounds) {
     if (sounds->shot_sound) free(sounds->shot_sound);
     if (sounds->stepl_sound) free(sounds->stepl_sound);
     if (sounds->stepr_sound) free(sounds->stepr_sound);
+    if (sounds->stepr_sound) free(sounds->bird_death_sound);
+    if (sounds->stepr_sound) free(sounds->cactus_death_sound);
 }
 
 void manage_events(State* state, Assets* A, DA *DAe, Sounds *sounds) {
@@ -1021,9 +1027,9 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
     if (!state->PAUSE && !state->GAMEOVER) {
         spawn_entities(A, DA_e, starts, SDL_GetTicks());
         animate(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc->ptr.DApc, state, starts, SDL_GetTicks(), sounds);
-        check_bcollisions(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc, state);
+        check_bcollisions(A, DA_e->ptr.DAe, DA_b->ptr.DAb, DA_pc, state, sounds);
         size_t now = SDL_GetTicks();
-        if (now - starts->Last_added_bullet >= 3500/SPEED && state->AMMO < 10) {
+        if (now - starts->Last_added_bullet >= 3500/(SPEED*(FPS/60.0f)) && state->AMMO < 10) {
             state->AMMO++;
             starts->Last_added_bullet = now;
         }
@@ -1090,6 +1096,8 @@ int main(int argc, char *argv[]) {
         .death_sound = Mix_LoadWAV("./assets/sound/death.wav"),
         .stepl_sound = Mix_LoadWAV("./assets/sound/stepl.wav"),
         .stepr_sound = Mix_LoadWAV("./assets/sound/stepr.wav"),
+        .bird_death_sound = Mix_LoadWAV("./assets/sound/bird_death.wav"),
+        .cactus_death_sound = Mix_LoadWAV("./assets/sound/cactus_death.wav"),
     };
 
     TTF_Font *font = TTF_OpenFont("./assets/font/Muli-Bold.ttf", 120);
