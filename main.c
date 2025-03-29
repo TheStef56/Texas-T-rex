@@ -396,7 +396,6 @@ void free_particles(DArrayOfParticlesCLusters *DApc) {
 float get_angle2(int ax, int ay, int bx, int by) {
     float angle = atan2(ay - by, ax - bx) * 180/PI + 180;
     return angle;
-    printf("%f", angle);
 }
 
 void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, Assets *A) {
@@ -1163,5 +1162,5 @@ int main(int argc, char *argv[]) {
 //      entitieas death sound
 //      increase a bit steps volume
 //      add mute option and volume regulation
-// - visual:
-//      hide cursor and put a custom cursor
+// - bugfix:
+//      correct the gun and bullet angle based on cursor distance
