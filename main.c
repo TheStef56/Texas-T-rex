@@ -36,6 +36,8 @@
 #define GUN_W FACTOR*111/100
 #define BULLET_H FACTOR*10/100
 #define BULLET_W FACTOR*24/100
+#define GSIGHT_H FACTOR*10/15
+#define GSIGHT_W FACTOR*10/15
 
 // PARTICLES RELATED VALUES
 #define GRAVITY 0.8f
@@ -101,6 +103,7 @@ typedef struct {
     SDL_Surface *Dinos_srf;
 
     Asset *Gun;
+    Asset *Gsight;
 
     Asset *Back_1;
     Asset *Back_2;
@@ -240,6 +243,12 @@ void init_assets(SDL_Renderer *renderer, Assets* A) {
     A->Gun->dst = (SDL_FRect){.x=WINDOW_WIDTH/10 + DINO_W*35/48, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y - DINO_H*0.4, .h=GUN_H, .w=GUN_W};
     A->Gun->srf = IMG_Load("./assets/img/gun.png");
     A->Gun->txt = SDL_CreateTextureFromSurface(renderer, A->Gun->srf);
+
+    A->Gsight = (Asset*)malloc(sizeof(Asset));
+    A->Gsight->src = (SDL_Rect){.x=0, .y=0, .h=796, .w=796};
+    A->Gsight->dst = (SDL_FRect){.x=0, .y=0, .h=GSIGHT_H, .w=GSIGHT_W};
+    A->Gsight->srf = IMG_Load("./assets/img/sight.png");
+    A->Gsight->txt = SDL_CreateTextureFromSurface(renderer, A->Gsight->srf);
 
     A->Bird_Down = (Asset*)malloc(sizeof(Asset));
     A->Bird_Down->src = (SDL_Rect){.x=0, .y=0, .h=55, .w=98};
@@ -398,9 +407,9 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
         }
     }
 
-    
-    Asset *arrayOfAssets[4] = {A->Back_1, A->Back_2, A->Dino, A->Gun};
-    for (int x=0; x<4; x++) {
+    #define NASSETS 4
+    Asset *arrayOfAssets[NASSETS] = {A->Back_1, A->Back_2, A->Dino, A->Gun};
+    for (int x = 0; x < NASSETS; x++) {
         Asset *ptr = arrayOfAssets[x];
         if (ptr && ptr->txt == A->Gun->txt){
             SDL_FPoint c = {
@@ -441,6 +450,16 @@ void display_bullets(State *state, SDL_Renderer *renderer, DArrayOfBullets *Bull
             CHECK_ERROR_int(SDL_RenderCopyExF(renderer, current->txt, &current->src, &current->dst, current->angle, &current->rot_c, SDL_FLIP_NONE), state);
         }
     }
+}
+
+void display_gsight(State *state, Assets *A, SDL_Renderer *renderer) {
+    Asset *ptr = A->Gsight;
+    int mouse_x;
+    int mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+    ptr->dst.x = mouse_x - GSIGHT_W/2;
+    ptr->dst.y = mouse_y - GSIGHT_H/2;
+    CHECK_ERROR_int(SDL_RenderCopyF(renderer, ptr->txt, &ptr->src, &ptr->dst), state);
 }
 
 void display_particles(State *state, SDL_Renderer *renderer, DArrayOfParticlesCLusters *Clusters) {
@@ -533,6 +552,7 @@ void display(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, DArray
         display_particles(state, renderer, Clusters);
         display_points(renderer, state, font);
         display_ammo(renderer, state, font);
+        display_gsight(state, A, renderer);
 
 }
 
@@ -1061,6 +1081,7 @@ int main(int argc, char *argv[]) {
     CHECK_ERROR_int(SDL_Init(SDL_INIT_EVERYTHING), GSptr);
     CHECK_ERROR_int(TTF_Init(), GSptr);
     CHECK_ERROR_int(Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, 2, 128), GSptr);
+    SDL_ShowCursor(false);
 
     SDL_Window* window = SDL_CreateWindow("Texas T-REX", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_WIDTH, WINDOW_HEIGHT, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
