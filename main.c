@@ -393,8 +393,19 @@ void free_particles(DArrayOfParticlesCLusters *DApc) {
     }
 }
 
-float get_angle2(int ax, int ay, int bx, int by) {
-    float angle = atan2(ay - by, ax - bx) * 180/PI + 180;
+float get_gun_angle(Asset *Gun) {
+    int mouse_x;
+    int mouse_y;
+    SDL_GetMouseState(&mouse_x, &mouse_y);
+
+    SDL_FPoint c = {
+        .x = GUN_W/8.0f,
+        .y = GUN_H*2.0f/3.0f
+    };
+
+    int gun_rot_cx = Gun->dst.x + c.x;
+    int gun_rot_cy = Gun->dst.y + c.y;
+    float angle = atan2(gun_rot_cy - mouse_y, gun_rot_cx - mouse_x) * 180/PI + 180;
     return angle;
 }
 
@@ -411,20 +422,7 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
     for (int x = 0; x < NASSETS; x++) {
         Asset *ptr = arrayOfAssets[x];
         if (ptr && ptr->txt == A->Gun->txt){
-            SDL_FPoint c = {
-                .x = GUN_W/8,
-                .y = GUN_H*2/3
-            };
-
-            int mouse_x;
-            int mouse_y;
-            SDL_GetMouseState(&mouse_x, &mouse_y);
-
-            int gun_rot_cx = A->Gun->dst.x + c.x;
-            int gun_rot_cy = A->Gun->dst.y + c.y;
-            
-            
-            CHECK_ERROR_int(SDL_RenderCopyExF(renderer, ptr->txt, &ptr->src, &ptr->dst, get_angle2(gun_rot_cx, gun_rot_cy, mouse_x, mouse_y), &c, SDL_FLIP_NONE), state);
+            CHECK_ERROR_int(SDL_RenderCopyExF(renderer, ptr->txt, &ptr->src, &ptr->dst, get_gun_angle(A->Gun), &(SDL_FPoint){ .x = GUN_W/8.0f, .y = GUN_H*2.0f/3.0f}, SDL_FLIP_NONE), state);
             continue;
         }
         if (ptr && ptr->txt) {
@@ -456,8 +454,8 @@ void display_gsight(State *state, Assets *A, SDL_Renderer *renderer) {
     int mouse_x;
     int mouse_y;
     SDL_GetMouseState(&mouse_x, &mouse_y);
-    ptr->dst.x = mouse_x - GSIGHT_W/2;
-    ptr->dst.y = mouse_y - GSIGHT_H/2;
+    ptr->dst.x = mouse_x - GSIGHT_W/2 + sinf((get_gun_angle(A->Gun)/360.f)*2*PI)*(GSIGHT_W/2 - BULLET_H);
+    ptr->dst.y = mouse_y - GSIGHT_H/2 - cosf((get_gun_angle(A->Gun)/360.f)*2*PI)*(GSIGHT_H/2 - BULLET_H);
     CHECK_ERROR_int(SDL_RenderCopyF(renderer, ptr->txt, &ptr->src, &ptr->dst), state);
 }
 
@@ -836,16 +834,14 @@ void spawn_cloud(Assets *A, DA* DAe) {
 
 }
 
-void spawn_bullet(Assets *A, DA* DAe) {
-    SDL_FPoint rot = {
-        .x = -GUN_W*7/8,
-        .y = GUN_H*2/3
+void spawn_bullet(Assets *A, DA* DAe, Asset *Gun) {
+    SDL_FPoint c = {
+        .x = GUN_W/8.0f,
+        .y = GUN_H*2.0f/3.0f
     };
 
-    int mouse_x;
-    int mouse_y;
-    SDL_GetMouseState(&mouse_x, &mouse_y);
-
+    int gun_rot_cx = Gun->dst.x + c.x;
+    int gun_rot_cy = Gun->dst.y + c.y;
 
     AssetRot *a = (AssetRot*)malloc(sizeof(AssetRot));
 
@@ -853,10 +849,15 @@ void spawn_bullet(Assets *A, DA* DAe) {
     a->dst = A->Bullet->dst;
     a->srf = A->Bullet->srf;
     a->txt = A->Bullet->txt;
-    a->rot_c = rot;
-    a->angle = get_angle2(A->Gun->dst.x + GUN_W/8, A->Gun->dst.y + GUN_H*2/3, mouse_x, mouse_y) + 3;
-    a->dst.x = A->Gun->dst.x + A->Gun->dst.w;
-    a->dst.y = A->Gun->dst.y;
+
+    float angle = get_gun_angle(Gun);
+    float angle_rad = (angle/360.f)*2*PI;
+    a->angle = angle;
+    a->rot_c = (SDL_FPoint) {.x=0.f, .y=0.f};
+
+    a->dst.x = gun_rot_cx + (GUN_W - c.x)*cosf(angle_rad) + (GUN_H - c.y)*sinf(angle_rad) + BULLET_H*sinf(angle_rad);
+    a->dst.y = gun_rot_cy + (GUN_W - c.x)*sinf(angle_rad) - (GUN_H - c.y)*cosf(angle_rad) - BULLET_H*cosf(angle_rad);
+
     DA_append(DAe, (void*)a);
 }
 
@@ -914,22 +915,13 @@ void check_bcollisions(Assets *A, DArrayOfEntities *DAe, DArrayOfBullets *Bullet
             if (DAe->data[x] && Bullets->data[y] && DAe->data[x]->txt != A->Cloud->txt) {
                 Asset *ent = DAe->data[x];
                 AssetRot *bull = Bullets->data[y]; 
-                float b_angle_rad = bull->angle*PI/180;
                 float bx = bull->dst.x;
                 float by = bull->dst.y;
 
-                float cx = A->Gun->dst.x + GUN_W/8;
-                float cy = A->Gun->dst.y + GUN_H/3;
-
-                float bx_delta = cx + (A->Gun->dst.x + A->Gun->dst.w - cx) * cosf(b_angle_rad) - (A->Gun->dst.y - cy) * sinf(b_angle_rad) + BULLET_H*sinf(b_angle_rad);
-                float by_delta = cy + (A->Gun->dst.x + A->Gun->dst.w - cx) * sinf(b_angle_rad) + (A->Gun->dst.y - cy) * cosf(b_angle_rad);
-                float bx_d = (A->Gun->dst.x + A->Gun->dst.w) - bx_delta ;
-                float by_d = A->Gun->dst.y - by_delta ;
-
-                if (bx - bx_d >= ent->dst.x &&
-                    bx - bx_d <= ent->dst.x + ent->dst.w &&
-                    by - by_d <= ent->dst.y + ent->dst.h &&
-                    by - by_d >= ent->dst.y) {
+                if (bx >= ent->dst.x &&
+                    bx <= ent->dst.x + ent->dst.w &&
+                    by <= ent->dst.y + ent->dst.h &&
+                    by >= ent->dst.y) {
 
                     if (ent->txt == A->Bird_Down->txt || ent->txt == A->Bird_Up->txt) {
                         state->POINTS += 20;
@@ -979,7 +971,7 @@ void manage_events(State* state, Assets* A, DA *DAe, Sounds *sounds) {
                         }
                         if (state->AMMO > 0 && !state->GAMEOVER && !event.key.repeat) {
                             state->AMMO--;
-                            spawn_bullet(A, DAe);
+                            spawn_bullet(A, DAe, A->Gun);
                             Mix_PlayChannel(-1, sounds->shot_sound, 0);
                         }
                         break;
@@ -1162,5 +1154,3 @@ int main(int argc, char *argv[]) {
 //      entitieas death sound
 //      increase a bit steps volume
 //      add mute option and volume regulation
-// - bugfix:
-//      correct the gun and bullet angle based on cursor distance
