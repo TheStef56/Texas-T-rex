@@ -18,6 +18,7 @@
 #define START_SPEED_B 15
 #define WINDOW_WIDTH  16*FACTOR
 #define WINDOW_HEIGHT  9*FACTOR
+#define VOLUME_STEP 10
 
 // ASSETS RELATED VALUES
 #define SOIL_HEIGHT FACTOR*60/100
@@ -36,8 +37,10 @@
 #define GUN_W FACTOR*111/100
 #define BULLET_H FACTOR*10/100
 #define BULLET_W FACTOR*24/100
-#define GSIGHT_H FACTOR*10/15
-#define GSIGHT_W FACTOR*10/15
+#define GSIGHT_H FACTOR*67/100
+#define GSIGHT_W FACTOR*67/100
+#define VOLUME_H FACTOR*50/100
+#define VOLUME_W FACTOR*50/100
 
 // PARTICLES RELATED VALUES
 #define GRAVITY 0.8f
@@ -119,6 +122,13 @@ typedef struct {
 
     Asset *Cloud;
     AssetRot *Bullet;
+
+    Asset *Volume_max;
+    Asset *Volume_mid;
+    Asset *Volume_low;
+    Asset *Volume_zero;
+    Asset *Vol;
+
 } Assets;
 
 typedef struct {
@@ -162,7 +172,6 @@ typedef struct {
     size_t size;
 } DArrayOfParticlesCLusters;
 
-
 typedef enum {
     DA_TYPE_ENTITIES,
     DA_TYPE_BULLETS,
@@ -181,13 +190,15 @@ typedef struct {
 } DA;
 
 typedef struct {
+    int VOLUME;
+    int MUTE_VOLUME;
+    size_t POINTS;
+    size_t AMMO;
     bool START;
     bool CLOSE;
     bool PAUSE;
     bool RESTART;
     bool GAMEOVER;
-    size_t POINTS;
-    size_t AMMO;
 } State;
 
 typedef struct{
@@ -198,6 +209,44 @@ typedef struct{
     Mix_Chunk *bird_death_sound;
     Mix_Chunk *cactus_death_sound;
 } Sounds;
+
+#define DA_INIT_CASE(TYPE, MEMBER)                                                                  \
+    if (DA->type == TYPE) {                                                                         \
+        typeof(DA->ptr.MEMBER) d = (typeof(DA->ptr.MEMBER))malloc(sizeof(typeof(*DA->ptr.MEMBER))); \
+        d->count = 0;                                                                               \
+        d->size = START_DA_SIZE;                                                                    \
+        d->data = (typeof(d->data))malloc(sizeof(typeof(*d->data))*START_DA_SIZE);                  \
+        memset(d->data, 0, sizeof(d->data)*START_DA_SIZE);                                          \
+        DA->ptr.MEMBER = d;                                                                         \
+        return;                                                                                     \
+    }
+
+
+#define DA_UNINIT_CASE(TYPE, MEMBER)                                \
+    case TYPE:                                                      \
+    for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {             \
+        if (DA->ptr.MEMBER->data[x]) free(DA->ptr.MEMBER->data[x]); \
+    }                                                               \
+    free(DA->ptr.MEMBER);                                           \
+    break;                                                          \
+
+
+#define DA_APPEND_CASE(TYPE, MEMBER)                                                                                                                              \
+    case TYPE:                                                                                                                                                    \
+        if (DA->ptr.MEMBER->count == DA->ptr.MEMBER->size - 1) {                                                                                                  \
+            DA->ptr.MEMBER->data = (typeof(DA->ptr.MEMBER->data))realloc(DA->ptr.MEMBER->data, sizeof(typeof(*DA->ptr.MEMBER->data)) * DA->ptr.MEMBER->size * 2); \
+            memset(DA->ptr.MEMBER->data + DA->ptr.MEMBER->size, 0, sizeof(typeof(*DA->ptr.MEMBER->data)) * DA->ptr.MEMBER->size);                                 \
+            DA->ptr.MEMBER->size *= 2;                                                                                                                            \
+        }                                                                                                                                                         \
+        for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {                                                                                                       \
+            if (DA->ptr.MEMBER->data[x] == NULL) {                                                                                                                \
+                DA->ptr.MEMBER->data[x] = (typeof(*DA->ptr.MEMBER->data))ent;                                                                                     \
+                DA->ptr.MEMBER->count++;                                                                                                                          \
+                return;                                                                                                                                           \
+            }                                                                                                                                                     \
+        }                                                                                                                                                         \
+        break;                                                                                                                                                    \
+
 
 void cap_fps(size_t t1, size_t t2) {
     size_t frametime = 1000/(FPS);
@@ -220,10 +269,9 @@ void init_assets(SDL_Renderer *renderer, Assets* A) {
     A->Back_2->txt = SDL_CreateTextureFromSurface(renderer, A->Back_2->srf);
 
 
+    // NO NEED FOR dst SINCE IT IS USED FOR TEXTURE
     A->Back_3 = (Asset*)malloc(sizeof(Asset));
     A->Back_3->src = (SDL_Rect){.x=0, .y=0, .h=60, .w=WINDOW_WIDTH};
-    // A->Back_3->dst = (SDL_FRect){.x=WINDOW_WIDTH, .y=WINDOW_HEIGHT - SOIL_HEIGHT - SOIL_Y, .h=SOIL_HEIGHT, .w=WINDOW_WIDTH};
-    // No need for dst, since it will be used for the texture, not to display it
     A->Back_3->srf = IMG_Load("./assets/img/back_3.png");
     A->Back_3->txt = SDL_CreateTextureFromSurface(renderer, A->Back_3->srf);
     A->Backs[0] = A->Back_1->txt;
@@ -293,32 +341,74 @@ void init_assets(SDL_Renderer *renderer, Assets* A) {
     A->Bullet->rot_c = (SDL_FPoint) {.x = 0, .y = 0};
     A->Bullet->srf = IMG_Load("./assets/img/bullet.png");
     A->Bullet->txt = SDL_CreateTextureFromSurface(renderer, A->Bullet->srf);
+    
+    A->Vol = (Asset*)malloc(sizeof(Asset));
+    A->Vol->src = (SDL_Rect){.x=0, .y=0, .h=512, .w=512};
+    A->Vol->dst = (SDL_FRect){.x=WINDOW_WIDTH/2 - VOLUME_W/2, .y = FACTOR*10/100, .h=VOLUME_H, .w=VOLUME_W};
+    A->Vol->srf = IMG_Load("./assets/img/vol_max.png");
+    A->Vol->txt = SDL_CreateTextureFromSurface(renderer, A->Vol->srf);
+    
+    // NO NEED FOR dst SINCE IT IS USED FOR TEXTURE
+    A->Volume_max = (Asset*)malloc(sizeof(Asset));
+    A->Volume_max->src = A->Vol->src;
+    A->Volume_max->srf = A->Vol->srf;
+    A->Volume_max->txt = A->Vol->txt;
+
+    // NO NEED FOR dst SINCE IT IS USED FOR TEXTURE
+    A->Volume_mid = (Asset*)malloc(sizeof(Asset));
+    A->Volume_mid->src = A->Vol->src;
+    A->Volume_mid->srf = IMG_Load("./assets/img/vol_mid.png");
+    A->Volume_mid->txt = SDL_CreateTextureFromSurface(renderer, A->Volume_mid->srf);
+    
+    // NO NEED FOR dst SINCE IT IS USED FOR TEXTURE
+    A->Volume_low = (Asset*)malloc(sizeof(Asset));
+    A->Volume_low->src = A->Vol->src;
+    A->Volume_low->srf = IMG_Load("./assets/img/vol_low.png");
+    A->Volume_low->txt = SDL_CreateTextureFromSurface(renderer, A->Volume_low->srf);
+
+    // NO NEED FOR dst SINCE IT IS USED FOR TEXTURE
+    A->Volume_zero = (Asset*)malloc(sizeof(Asset));
+    A->Volume_zero->src = A->Vol->src;
+    A->Volume_zero->srf = IMG_Load("./assets/img/vol_zero.png");
+    A->Volume_zero->txt = SDL_CreateTextureFromSurface(renderer, A->Volume_zero->srf);
 
 }
 
 void destroy_assets(Assets *A) {
-    Asset *arrayOfAssets[9] = {A->Dino, A->Back_1, A->Back_2, A->Back_3, A->Bird_Down, A->Bird_Up, A->Cactus_1, A->Cactus_2, A->Cactus_3};
-    for (int x=0; x<9; x++) {
+    #define N_ASSETS 17
+
+    Asset *arrayOfAssets[N_ASSETS] = {A->Dino,
+                                A->Gun,
+                                A->Gsight,
+                                A->Back_1,
+                                A->Back_2,
+                                A->Back_3,
+                                A->Bird_Down,
+                                A->Bird_Up,
+                                A->Cactus_1,
+                                A->Cactus_2,
+                                A->Cactus_3,
+                                A->Cloud,
+                                A->Volume_max,
+                                A->Volume_mid,
+                                A->Volume_low,
+                                A->Volume_zero,
+                                A->Vol,
+                            };
+    for (int x = 0; x < N_ASSETS; x++) {
         Asset *ptr = arrayOfAssets[x];
         if (ptr && ptr->srf) SDL_FreeSurface(ptr->srf);
         if (ptr && ptr->txt) SDL_DestroyTexture(ptr->txt);
         if (ptr) free(ptr);
     }
+
     if (A->Backs[0]) SDL_DestroyTexture(A->Backs[0]);
     if (A->Backs[1]) SDL_DestroyTexture(A->Backs[1]);
     if (A->Backs[2]) SDL_DestroyTexture(A->Backs[2]);
-}
+    if (A->Dinos_txt) SDL_DestroyTexture(A->Dinos_txt);
+    if (A->Dinos_srf) SDL_FreeSurface(A->Dinos_srf);
 
-#define DA_INIT_CASE(TYPE, MEMBER)                                                                  \
-    if (DA->type == TYPE) {                                                                         \
-        typeof(DA->ptr.MEMBER) d = (typeof(DA->ptr.MEMBER))malloc(sizeof(typeof(*DA->ptr.MEMBER))); \
-        d->count = 0;                                                                               \
-        d->size = START_DA_SIZE;                                                                    \
-        d->data = (typeof(d->data))malloc(sizeof(typeof(*d->data))*START_DA_SIZE);                  \
-        memset(d->data, 0, sizeof(d->data)*START_DA_SIZE);                                          \
-        DA->ptr.MEMBER = d;                                                                         \
-        return;                                                                                     \
-    }
+}
 
 void init_DA(DA *DA){
     DA_INIT_CASE(DA_TYPE_ENTITIES, DAe)
@@ -327,14 +417,6 @@ void init_DA(DA *DA){
     DA_INIT_CASE(DA_TYPE_CLUSTERS, DApc)
     UNREACHABLE()
 }
-
-#define DA_UNINIT_CASE(TYPE, MEMBER)                                \
-    case TYPE:                                                      \
-    for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {             \
-        if (DA->ptr.MEMBER->data[x]) free(DA->ptr.MEMBER->data[x]); \
-    }                                                               \
-    free(DA->ptr.MEMBER);                                           \
-    break;                                                          \
 
 void uninit_DA(DA *DA) {
     switch(DA->type) {
@@ -347,23 +429,6 @@ void uninit_DA(DA *DA) {
             break;
     }
 }
-
-#define DA_APPEND_CASE(TYPE, MEMBER)                                                                                                                              \
-    case TYPE:                                                                                                                                                    \
-        if (DA->ptr.MEMBER->count == DA->ptr.MEMBER->size - 1) {                                                                                                  \
-            DA->ptr.MEMBER->data = (typeof(DA->ptr.MEMBER->data))realloc(DA->ptr.MEMBER->data, sizeof(typeof(*DA->ptr.MEMBER->data)) * DA->ptr.MEMBER->size * 2); \
-            memset(DA->ptr.MEMBER->data + DA->ptr.MEMBER->size, 0, sizeof(typeof(*DA->ptr.MEMBER->data)) * DA->ptr.MEMBER->size);                                 \
-            DA->ptr.MEMBER->size *= 2;                                                                                                                            \
-        }                                                                                                                                                         \
-        for (size_t x = 0; x < DA->ptr.MEMBER->size; x++) {                                                                                                       \
-            if (DA->ptr.MEMBER->data[x] == NULL) {                                                                                                                \
-                DA->ptr.MEMBER->data[x] = (typeof(*DA->ptr.MEMBER->data))ent;                                                                                     \
-                DA->ptr.MEMBER->count++;                                                                                                                          \
-                return;                                                                                                                                           \
-            }                                                                                                                                                     \
-        }                                                                                                                                                         \
-        break;                                                                                                                                                    \
-
 
 void DA_append(DA *DA, void *ent) {
     switch (DA->type) {
@@ -409,7 +474,7 @@ float get_gun_angle(Asset *Gun) {
     return angle;
 }
 
-void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, Assets *A) {
+void display_dino_back_gun_cloud_vol(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, Assets *A) {
     for (size_t x = 0; x < DAe->size; x++) {
         if (DAe->data[x] && DAe->data[x]->txt == A->Cloud->txt) {
             Asset *current = DAe->data[x];
@@ -417,9 +482,9 @@ void display_dino_back_gun_cloud(State *state, SDL_Renderer *renderer, DArrayOfE
         }
     }
 
-    #define NASSETS 4
-    Asset *arrayOfAssets[NASSETS] = {A->Back_1, A->Back_2, A->Dino, A->Gun};
-    for (int x = 0; x < NASSETS; x++) {
+    #define N_ASSETS_M 5
+    Asset *arrayOfAssets[N_ASSETS_M] = {A->Back_1, A->Back_2, A->Dino, A->Gun, A->Vol};
+    for (int x = 0; x < N_ASSETS_M; x++) {
         Asset *ptr = arrayOfAssets[x];
         if (ptr && ptr->txt == A->Gun->txt){
             CHECK_ERROR_int(SDL_RenderCopyExF(renderer, ptr->txt, &ptr->src, &ptr->dst, get_gun_angle(A->Gun), &(SDL_FPoint){ .x = GUN_W/8.0f, .y = GUN_H*2.0f/3.0f}, SDL_FLIP_NONE), state);
@@ -542,30 +607,24 @@ void display_ammo(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     SDL_DestroyTexture(txt);
 }
 
-void display(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, DArrayOfBullets *Bullets, DArrayOfParticlesCLusters *Clusters, Assets *A, TTF_Font *font) {
-        display_dino_back_gun_cloud(state, renderer, DAe, A);
-        display_entities(state, A, renderer, DAe);
-        display_bullets(state, renderer, Bullets);
-        display_particles(state, renderer, Clusters);
-        display_points(renderer, state, font);
-        display_ammo(renderer, state, font);
-        display_gsight(state, A, renderer);
-
-}
-
 void display_menu(SDL_Renderer *renderer, State *state, TTF_Font *font) {
-    char *text = "                  Press [ESC] to pause or exit (if already paused)\n\
-                  Press [SPACE] to shoot\n\
-                  Press [P] to pause or resume\n\
-                  Press [R] to restart";
+    char *text = "Press [ESC] to pause or exit (if already paused)\n\
+Press [SPACE] to shoot\n\
+Press [P] to pause or resume\n\
+Press [R] to restart\n\
+Press [ARROW UP] to increase volume\n\
+Press [ARROW DOWN] to decrease volume\n\
+Press [M] to mute volume";
+
     SDL_Surface *srf = TTF_RenderText_Solid_Wrapped(font, text, (SDL_Color) {0, 0, 0, 255}, 0);
     CHECK_ERROR_ptr(srf, state);
 
     SDL_Texture *txt = SDL_CreateTextureFromSurface(renderer, srf);
+    #define N_LINES 7
     SDL_FRect dst = {
         .w = 48 * FACTOR*20/100,
-        .h =  FACTOR*40*4/100,
-        .x = WINDOW_WIDTH/2 - 25 * FACTOR*20/100,
+        .h =  FACTOR*50*N_LINES/100,
+        .x = WINDOW_WIDTH/3*2 - 24 * FACTOR*20/100,
         .y = WINDOW_HEIGHT*3/7
     };
 
@@ -583,8 +642,8 @@ void display_start(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     SDL_FRect dst = {
         .w = 21 * FACTOR*50/100,
         .h =  FACTOR,
-        .x = WINDOW_WIDTH/2 - 10 * FACTOR*50/100,
-        .y = WINDOW_HEIGHT/4
+        .x = WINDOW_WIDTH/2 - 10.5 * FACTOR*50/100,
+        .y = WINDOW_HEIGHT/5
     };
 
     CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
@@ -644,6 +703,17 @@ void display_pause(SDL_Renderer *renderer, State *state, TTF_Font *font) {
     CHECK_ERROR_int(SDL_RenderCopyF(renderer, txt, NULL, &dst), state);
     SDL_FreeSurface(srf);
     SDL_DestroyTexture(txt);
+}
+
+void display(State *state, SDL_Renderer *renderer, DArrayOfEntities *DAe, DArrayOfBullets *Bullets, DArrayOfParticlesCLusters *Clusters, Assets *A, TTF_Font *font) {
+    display_dino_back_gun_cloud_vol(state, renderer, DAe, A);
+    display_entities(state, A, renderer, DAe);
+    display_bullets(state, renderer, Bullets);
+    display_particles(state, renderer, Clusters);
+    display_points(renderer, state, font);
+    display_ammo(renderer, state, font);
+    display_gsight(state, A, renderer);
+
 }
 
 void animate_soil(Assets *A)  {
@@ -975,7 +1045,6 @@ void manage_events(State* state, Assets* A, DA *DAe, Sounds *sounds) {
                             Mix_PlayChannel(-1, sounds->shot_sound, 0);
                         }
                         break;
-                    
                     case SDL_SCANCODE_P:
                         state->PAUSE = !state->PAUSE;
                         break;
@@ -984,6 +1053,55 @@ void manage_events(State* state, Assets* A, DA *DAe, Sounds *sounds) {
                             state->RESTART = true;
                         }
                         if (state->GAMEOVER) state->GAMEOVER = false;
+                        break;
+                    case SDL_SCANCODE_UP:
+                        if(state->MUTE_VOLUME != 0) {
+                            state->VOLUME = state->MUTE_VOLUME;
+                            state->MUTE_VOLUME = 0;
+                        }
+                        state->VOLUME = state->VOLUME + VOLUME_STEP < MIX_MAX_VOLUME ? state->VOLUME + VOLUME_STEP : MIX_MAX_VOLUME;
+
+                        #define CHOOSE_VOL_ICON if (state->VOLUME == 0){          \
+                                    A->Vol->txt = A->Volume_zero->txt;            \
+                                } else if (state->VOLUME <= MIX_MAX_VOLUME / 2) { \
+                                    A->Vol->txt = A->Volume_low->txt;             \
+                                } else if (state->VOLUME < MIX_MAX_VOLUME) {      \
+                                    A->Vol->txt = A->Volume_mid->txt;             \
+                                } else if (state->VOLUME == MIX_MAX_VOLUME) {     \
+                                    A->Vol->txt = A->Volume_max->txt;             \
+                                }                                                 \
+                        
+                        CHOOSE_VOL_ICON
+                        
+                        Mix_MasterVolume(state->VOLUME);
+                        break;
+                    case SDL_SCANCODE_DOWN:
+                        if(state->MUTE_VOLUME != 0) {
+                            state->VOLUME = state->MUTE_VOLUME;
+                            state->MUTE_VOLUME = 0;
+                        }
+
+                        state->VOLUME = state->VOLUME - VOLUME_STEP > 0 ? state->VOLUME - VOLUME_STEP : 0;
+                        state->MUTE_VOLUME = state->VOLUME;
+
+                        CHOOSE_VOL_ICON
+
+                        Mix_MasterVolume(state->VOLUME);
+                        break;
+                    case SDL_SCANCODE_M:
+                        if (state->VOLUME == 0) {
+                            int a = state->MUTE_VOLUME; 
+                            state->MUTE_VOLUME = state->VOLUME;
+                            state->VOLUME = a; 
+                        } else {
+                            int a = state->VOLUME; 
+                            state->VOLUME = 0;
+                            state->MUTE_VOLUME = a;
+                        }
+
+                        CHOOSE_VOL_ICON
+
+                        Mix_MasterVolume(state->VOLUME);
                         break;
                     case SDL_SCANCODE_ESCAPE:
                         if (state->GAMEOVER) {
@@ -1017,8 +1135,6 @@ void handle(State *state, SDL_Renderer *renderer, DA *DA_e, DA *DA_b, DA *DA_pc,
         state->POINTS = 0;
         state->AMMO = 0;
         SPEED = START_SPEED/(FPS/60.f);
-        destroy_assets(A);
-        init_assets(renderer, A);
         free_particles(DA_pc->ptr.DApc);
         uninit_DA(DA_e);
         uninit_DA(DA_b);
@@ -1060,10 +1176,12 @@ int main(int argc, char *argv[]) {
     (void)argc;
     (void)argv;
     State GameState = {
-        .CLOSE = false,
-        .PAUSE = false,
+        .MUTE_VOLUME = 0,
+        .VOLUME = SDL_MIX_MAXVOLUME,
         .POINTS = 0,
         .AMMO = 0,
+        .CLOSE = false,
+        .PAUSE = false,
         .RESTART = false,
         .START = true,
     };
@@ -1147,10 +1265,3 @@ int main(int argc, char *argv[]) {
     SDL_Quit();
     return 0;
 }
-
-
-// TODO:
-// - sound:
-//      entitieas death sound
-//      increase a bit steps volume
-//      add mute option and volume regulation
