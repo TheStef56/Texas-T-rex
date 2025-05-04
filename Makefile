@@ -12,7 +12,8 @@ ifeq ($(OS), Windows_NT)
 	-lm -lgdi32 -lwinmm -lrpcrt4 -lsetupapi -lole32 -limm32 -lversion -loleaut32 -static
 else
 	CMD = cp -r SDL2-deps-linux build &&\
-	cd build && make
+	cd build && make &&\
+	cd .. &&\
 	cc -o trex main.c -g -Wall -Wextra -I./include -L./lib -lSDL2 -lSDL2main -lSDL2_image -lSDL2_ttf -lSDL2_mixer -lm -Bstatic
 
 endif
