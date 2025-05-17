@@ -1,6 +1,6 @@
-ARCH_TYPE := $(shell gcc -dumpmachine)
+ARCH_TYPE := $(shell echo %PROCESSOR_ARCHITEW6432%)
 
-ifeq ($(findstring x86_64, $(ARCH_TYPE)), x86_64)
+ifeq ($(findstring AMD64 , $(ARCH_TYPE)), AMD64)
     ARCH = x64
 else
 	ARCH = x86
