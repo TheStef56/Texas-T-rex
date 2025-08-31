@@ -1,7 +1,16 @@
 SDL_PREFIX=$(PWD)/SDL2_ttf/external/SDL
 
+SDL_VIDEO_FLAGS =
+ifeq ($(XDG_SESSION_TYPE),wayland)
+    SDL_VIDEO_FLAGS = -DSDL_VIDEO_WAYLAND=ON -DSDL_VIDEO_X11=OFF
+else ifeq ($(XDG_SESSION_TYPE),x11)
+    SDL_VIDEO_FLAGS = -DSDL_VIDEO_WAYLAND=OFF -DSDL_VIDEO_X11=ON
+else
+    SDL_VIDEO_FLAGS = -DSDL_VIDEO_WAYLAND=ON -DSDL_VIDEO_X11=ON
+endif
+
 all:
-	cmake -S ./SDL2 -B ./SDL2/build
+	cmake -S ./SDL2 -B ./SDL2/build $(SDL_VIDEO_FLAGS)
 	cmake --build ./SDL2/build
 	cmake --install ./SDL2/build --prefix ./SDL2_ttf/external/SDL
 	cd ./SDL2_ttf/ && autoreconf -f -i && ./configure --with-sdl-prefix="${SDL_PREFIX}"
